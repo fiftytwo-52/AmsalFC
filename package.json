@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "echo 'Ready for Vercel deployment'"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

@@ -19,18 +19,29 @@ fi
 
 echo ""
 echo "Choose deployment method:"
-echo "1) Full Express App (Recommended)"
-echo "2) Static Site Only (Limited functionality)"
-read -p "Enter choice (1 or 2): " choice
+echo "1) Render.com (Recommended - Full features with Socket.IO)"
+echo "2) Vercel (Limited - No real-time features)"
+echo "3) Static Site Only (Basic HTML/CSS/JS only)"
+read -p "Enter choice (1, 2, or 3): " choice
 
 if [ "$choice" = "1" ]; then
-    echo "📦 Deploying full Express application..."
-    
-    # Backup current vercel.json
-    if [ -f "vercel.json" ]; then
-        mv vercel.json vercel.json.backup
+    echo "🌐 Deploying to Render.com (Recommended)..."
+    echo "Please follow the Render.com deployment instructions in README.md"
+    echo "Run: ./deploy-render.sh for detailed instructions"
+    exit 0
+
+elif [ "$choice" = "2" ]; then
+    echo "⚠️  WARNING: Vercel deployment will DISABLE real-time features!"
+    echo "Socket.IO will NOT work on Vercel. Continue? (y/N)"
+    read -p "" -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deployment cancelled."
+        exit 1
     fi
-    
+
+    echo "📦 Deploying Express app to Vercel (limited functionality)..."
+
     # Use the Express config
     cat > vercel.json << 'EOFF'
 {
@@ -52,17 +63,29 @@ if [ "$choice" = "1" ]; then
   }
 }
 EOFF
-    
-elif [ "$choice" = "2" ]; then
-    echo "📄 Deploying static site only..."
-    
-    # Backup current vercel.json
-    if [ -f "vercel.json" ]; then
-        mv vercel.json vercel.json.backup
-    fi
-    
-    # Use the static config
-    cp vercel-static.json vercel.json
+
+else
+    echo "📄 Deploying static site only (no backend functionality)..."
+    echo "This will only serve HTML/CSS/JS files with no dynamic features."
+
+    # Create basic static deployment config
+    cat > vercel.json << 'EOFF'
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
+}
+EOFF
 fi
 
 echo ""

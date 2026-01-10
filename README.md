@@ -20,14 +20,34 @@ npm run dev
 
 ## Deployment
 
-### Option 1: Netlify (Static Version)
+### Option 1: Vercel (Limited Features - Not Recommended)
 
-1. Build the static version:
-```bash
-npm run build
-```
+**⚠️ Important: Vercel has major limitations for this app!**
+- ❌ **Socket.IO will NOT work** (no WebSocket support in serverless functions)
+- ❌ Real-time updates will be disabled
+- ❌ Live features won't function properly
 
-2. Deploy the `dist/` folder to Netlify
+#### Why Vercel is not recommended:
+This app uses Socket.IO for real-time features. Vercel's serverless architecture doesn't support WebSockets, so features like live member updates, news notifications, and real-time communication will not work.
+
+#### If you still want to deploy to Vercel:
+
+1. **Install Vercel CLI**:
+   ```bash
+   npm install -g vercel
+   vercel login
+   ```
+
+2. **Deploy**:
+   ```bash
+   vercel --prod
+   ```
+
+3. **Set environment variables** in Vercel dashboard:
+   - `SUPER_ADMIN_USERNAME`
+   - `SUPER_ADMIN_PASSWORD`
+
+**Result**: Basic CRUD operations will work, but no real-time features.
 
 ### Option 2: Render.com Deployment (Recommended)
 

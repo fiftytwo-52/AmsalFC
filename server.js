@@ -694,9 +694,8 @@ app.delete('/api/admins/:id', (req, res) => {
     }
 });
 
-// For Vercel deployment
-if (process.env.NODE_ENV === 'production') {
-    // Export for Vercel serverless functions
+// For Vercel deployment (serverless function)
+if (process.env.VERCEL) {
     module.exports = app;
 } else {
     // Local development
