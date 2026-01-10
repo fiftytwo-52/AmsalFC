@@ -718,12 +718,38 @@ app.delete('/api/admins/:id', (req, res) => {
     }
 });
 
-// For Vercel deployment (serverless function)
+// Start the server
+console.log(`[Server] Attempting to start server on port ${PORT}`);
+
+try {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`[Server] ✅ Server successfully started on port ${PORT}`);
+        console.log(`[Server] 🚀 AMSAL FC application is running!`);
+    });
+
+    // Handle server errors
+    server.on('error', (error) => {
+        console.error('[Server] ❌ Server error:', error);
+        process.exit(1);
+    });
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+        console.error('[Server] ❌ Uncaught Exception:', error);
+        process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error('[Server] ❌ Unhandled Rejection at:', promise, 'reason:', reason);
+        process.exit(1);
+    });
+
+} catch (error) {
+    console.error('[Server] ❌ Failed to start server:', error);
+    process.exit(1);
+}
+
+// Export for serverless platforms (Vercel)
 if (process.env.VERCEL) {
     module.exports = app;
-} else {
-    // Local development
-    server.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-    });
 }
