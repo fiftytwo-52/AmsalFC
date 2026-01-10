@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1768041387758",
+    "headline": "about vale cup",
+    "description": "Squad Management\nPlayer Name *\nPosition *\nJersey Number\nAge\nHeight (cm)\nPreferred Foot\nAddress\nPlayer Image (Upload from Device)\n\nOr enter image URL below\nImage URL (Optional)\nStatus\nAdmin Notes\nSquad Management\nPlayer Name *\nPosition *\nJersey Number\nAge\nHeight (cm)\nPreferred Foot\nAddress\nPlayer Image (Upload from Device)\n\nOr enter image URL below\nImage URL (Optional)\nStatus\nAdmin Notes\nSquad Management\nPlayer Name *\nPosition *\nJersey Number\nAge\nHeight (cm)\nPreferred Foot\nAddress\nPlayer Image (Upload from Device)\n\nOr enter image URL below\nImage URL (Optional)\nStatus\nAdmin Notes",
+    "publisher": "fifttytwo",
+    "imageUrl": "",
+    "type": "notice",
+    "date": "2026-01-10T10:36:27.758Z",
+    "dateFormatted": "Jan 10, 2026"
+  },
+  {
+    "id": "1768045414499",
+    "headline": "invitation for running shild",
+    "description": "Ganesh Khatiiwada\n#7\nGanesh Khatiiwada\nRB\nName Ganesh Khatiiwada\nPos RB\n# 7\nAge 23\nHt 154cm\nFoot R\nAddr Amsal\nStatus Active\n\nGanesh Khatiiwada\n#7\nGanesh Khatiiwada\nRB\nName Ganesh Khatiiwada\nPos RB\n# 7\nAge 23\nHt 154cm\nFoot R\nAddr Amsal\nStatus Active\n\nGanesh Khatiiwada\n#7\nGanesh Khatiiwada\nRB\nName Ganesh Khatiiwada\nPos RB\n# 7\nAge 23\nHt 154cm\nFoot R\nAddr Amsal\nStatus Active",
+    "publisher": "fiftytwo",
+    "imageUrl": "/uploads/1768045414428-167988400.png",
+    "type": "notice",
+    "date": "2026-01-10T11:43:34.499Z",
+    "dateFormatted": "Jan 10, 2026"
+  },
+  {
+    "id": "1768059799876",
+    "headline": "Test notice",
+    "description": "check and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this codecheck and fix this code",
+    "publisher": "fiftytwo",
+    "imageUrl": "",
+    "type": "notice",
+    "date": "2026-01-10T15:43:19.876Z",
+    "dateFormatted": "Jan 10, 2026"
+  },
+  {
+    "id": "1768059974016",
+    "headline": "newadmin",
+    "description": "check and fix this code1. Member Type Dropdown (Player/Staff)\nA dropdown menu (Member Type) allows you to specify Player or Staff when adding/editing a member in squad management.\nThis field is required.\n2. Conditional Position Selector\nIf member type is \"Player\":\nOnly player positions (GK, Defender, Midfielder, Forward, etc.) are visible as checkboxes.\nIf member type is \"Staff\":\nOnly staff positions (Coach, Manager, etc.) are visible.\nPlayer position options (defender, GK, etc.) are hidden.\nChanging member type will uncheck all previously selected positions for clarity.\n3. Multiple Position Selection\nYou can select multiple positions for a member (both player and staff, as appropriate).\nData is saved to the database as an array.\nAll selected positions are shown (separated with /) on player cards, staff cards, admin view, and the modal.\n4. Age and Height Ranges\nAge input: accepts values from 0 to 100 years.\nHeight input: accepts values from 0 to 300 cm.\nValidation matches those ranges.\n5. News Publisher Fix\nThe Publisher Name field is now removed from news management.\nWhen an admin posts news, the publisher is set automatically to the admin’s username (from session storage).\nNo manual entry needed.\n6. Positions “Undefined” Fix on Player Cards\nPlayer cards and staff cards now correctly display all assigned positions. They show empty if none are selected but will never display undefined.\n7. Database Adjustments\nDatabase now saves:\nmemberType (Player/Staff)\npositions (array of roles for each member)\nThe server-side API, POST/PUT, and update logic all handle the new schema and validation for memberType/positions.\n8. Miscellaneous\nUI alignment, field toggling, and real-time updates for the forms and card displays have all been handled (see above for linter and bug-free status).\nYou now have:\nFull control over distinguishing Players vs Staff when adding/editing members.\nEasy, multiple-position assignment for every member.\nNo confusion on positions, and all are displayed cleanly everywhere.\nAge and height ranges set for realistic and broad input.\nNo more undefined bugs.\nNews posts linked to the real admin user, with clean UI.",
+    "publisher": "test",
+    "imageUrl": "",
+    "type": "news",
+    "date": "2026-01-10T15:46:14.016Z",
+    "dateFormatted": "Jan 10, 2026"
+  },
+  {
+    "id": "1768064924420",
+    "headline": "testbygk",
+    "description": "\"If you are a player and would like to be included, please contact us.\"\"If you are a player and would like to be included, please contact us.\"\"If you are a player and would like to be included, please contact us.\"\"If you are a player and would like to be included, please contact us.\"",
+    "publisher": "fiftytwo",
+    "imageUrl": "",
+    "type": "news",
+    "date": "2026-01-10T17:08:44.420Z",
+    "dateFormatted": "Jan 10, 2026"
+  }
+]

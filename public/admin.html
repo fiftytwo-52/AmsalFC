@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AMSAL FC Admin Dashboard - Manage your club content">
+    <title>Admin Dashboard | AMSAL FC</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Auth Check -->
+    <script>
+        if (!sessionStorage.getItem('amsal_admin')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-left">
+                <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed"
+                    onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+            </div>
+
+            <div class="nav-center">
+                <h1 class="club-title-white">AMSAL FC</h1>
+            </div>
+
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html" title="Home"><i class="fas fa-home"></i></a></li>
+                    <li><a href="admin.html" class="active" title="Dashboard"><i class="fas fa-tachometer-alt"></i></a>
+                    </li>
+                    <li><a href="#" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
+                </ul>
+                <button class="menu-toggle" id="mobile-menu" aria-label="Toggle Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Admin Container -->
+    <div class="admin-container">
+        <div class="container">
+            <!-- Dashboard Header -->
+            <div class="dashboard-header">
+                <div>
+                    <h1 class="dashboard-title">Admin Dashboard</h1>
+                    <p class="dashboard-subtitle">Manage your club content and members</p>
+                </div>
+                <div class="dashboard-user">
+                    <img id="admin-avatar" src="" alt="Admin" class="user-avatar" style="display: none;">
+                    <span id="admin-avatar-placeholder" class="user-placeholder">👤</span>
+                    <div>
+                        <p id="admin-username" class="user-name">Admin</p>
+                        <p id="admin-role" class="user-role">Administrator</p>
+                        <button onclick="editSelf()" class="user-edit-link">Edit Profile</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Squad Management Card -->
+                <div class="dashboard-card card-span-2">
+                    <div class="card-header">
+                        <div class="card-icon">⚽</div>
+                        <h2 class="card-title">Squad Management</h2>
+                    </div>
+
+                    <form id="add-member-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="m-name">Player Name *</label>
+                                <input type="text" id="m-name" class="form-input" placeholder="Enter full name"
+                                    required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-member-type">Member Type *</label>
+                                <select id="m-member-type" class="form-select" required>
+                                    <option value="">Select type</option>
+                                    <option value="Player">Player</option>
+                                    <option value="Staff">Staff</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Position(s) * <span
+                                        style="font-size: 0.85rem; font-weight: normal; color: var(--neutral-600);">(Select
+                                        one or more)</span></label>
+                                <div class="position-selector-container">
+                                    <div class="position-category-box player-position-category">
+                                        <div class="position-category-header">
+                                            <i class="fas fa-shield-alt"></i>
+                                            <span>Goalkeepers</span>
+                                        </div>
+                                        <div class="position-options">
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="GK">
+                                                <span class="position-badge">GK</span>
+                                                <span class="position-name">Goalkeeper</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="position-category-box player-position-category">
+                                        <div class="position-category-header">
+                                            <i class="fas fa-shield"></i>
+                                            <span>Defenders</span>
+                                        </div>
+                                        <div class="position-options">
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="CB">
+                                                <span class="position-badge">CB</span>
+                                                <span class="position-name">Center Back</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="LB">
+                                                <span class="position-badge">LB</span>
+                                                <span class="position-name">Left Back</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="RB">
+                                                <span class="position-badge">RB</span>
+                                                <span class="position-name">Right Back</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="LWB">
+                                                <span class="position-badge">LWB</span>
+                                                <span class="position-name">Left Wing Back</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="RWB">
+                                                <span class="position-badge">RWB</span>
+                                                <span class="position-name">Right Wing Back</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="SW">
+                                                <span class="position-badge">SW</span>
+                                                <span class="position-name">Sweeper</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="position-category-box player-position-category">
+                                        <div class="position-category-header">
+                                            <i class="fas fa-futbol"></i>
+                                            <span>Midfielders</span>
+                                        </div>
+                                        <div class="position-options">
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="CDM">
+                                                <span class="position-badge">CDM</span>
+                                                <span class="position-name">Defensive Midfielder</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="CM">
+                                                <span class="position-badge">CM</span>
+                                                <span class="position-name">Central Midfielder</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="CAM">
+                                                <span class="position-badge">CAM</span>
+                                                <span class="position-name">Attacking Midfielder</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="LM">
+                                                <span class="position-badge">LM</span>
+                                                <span class="position-name">Left Midfielder</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="RM">
+                                                <span class="position-badge">RM</span>
+                                                <span class="position-name">Right Midfielder</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="LW">
+                                                <span class="position-badge">LW</span>
+                                                <span class="position-name">Left Winger</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="RW">
+                                                <span class="position-badge">RW</span>
+                                                <span class="position-name">Right Winger</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="position-category-box player-position-category">
+                                        <div class="position-category-header">
+                                            <i class="fas fa-bullseye"></i>
+                                            <span>Forwards</span>
+                                        </div>
+                                        <div class="position-options">
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="ST">
+                                                <span class="position-badge">ST</span>
+                                                <span class="position-name">Striker</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="CF">
+                                                <span class="position-badge">CF</span>
+                                                <span class="position-name">Center Forward</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="LF">
+                                                <span class="position-badge">LF</span>
+                                                <span class="position-name">Left Forward</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="RF">
+                                                <span class="position-badge">RF</span>
+                                                <span class="position-name">Right Forward</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="position-category-box staff-position-category">
+                                        <div class="position-category-header">
+                                            <i class="fas fa-user-tie"></i>
+                                            <span>Staff</span>
+                                        </div>
+                                        <div class="position-options">
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Coach">
+                                                <span class="position-badge staff-badge">Coach</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Manager">
+                                                <span class="position-badge staff-badge">Manager</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Assistant Coach">
+                                                <span class="position-badge staff-badge">Asst. Coach</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Team Doctor">
+                                                <span class="position-badge staff-badge">Doctor</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Advisor">
+                                                <span class="position-badge staff-badge">Advisor</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Social Media Manager">
+                                                <span class="position-badge staff-badge">SMM</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Sponsor">
+                                                <span class="position-badge staff-badge">Sponsor</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Physiotherapist">
+                                                <span class="position-badge staff-badge">Physio</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Kit Manager">
+                                                <span class="position-badge staff-badge">Kit Mgr</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Video Analyst">
+                                                <span class="position-badge staff-badge">Analyst</span>
+                                            </label>
+                                            <label class="position-option">
+                                                <input type="checkbox" name="m-position" value="Site Manager">
+                                                <span class="position-badge staff-badge">Site Mgr</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-jersey">Jersey Number</label>
+                                <input type="number" id="m-jersey" class="form-input" placeholder="e.g., 10" min="1"
+                                    max="99">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-age">Age</label>
+                                <input type="number" id="m-age" class="form-input" placeholder="e.g., 25" min="0"
+                                    max="100">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-height">Height (cm)</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="number" id="m-height" class="form-input" placeholder="e.g., 175"
+                                        min="0" max="300">
+                                    <span id="height-display" class="height-conversion"
+                                        style="font-size: 0.9rem; color: var(--primary-600); min-width: 60px;"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-foot">Preferred Foot</label>
+                                <select id="m-foot" class="form-select">
+                                    <option value="">Select foot</option>
+                                    <option value="Right">Right</option>
+                                    <option value="Left">Left</option>
+                                    <option value="Both">Both</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label" for="m-address">Address</label>
+                                <input type="text" id="m-address" class="form-input" placeholder="City, Country">
+                            </div>
+
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label" for="m-image-file">Player Image (Upload from Device)</label>
+                                <input type="file" id="m-image-file" class="form-input" accept="image/*">
+                                <p style="font-size: 0.85rem; color: var(--neutral-600); margin-top: 0.5rem;">Or enter
+                                    image URL below</p>
+                            </div>
+
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label" for="m-image-url">Image URL (Optional)</label>
+                                <input type="url" id="m-image-url" class="form-input"
+                                    placeholder="https://example.com/image.jpg">
+                            </div>
+
+                            <div class="form-group" id="m-remove-image-group"
+                                style="grid-column: 1 / -1; display: none;">
+                                <label class="remove-image-label"
+                                    style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error-600); margin-top: 0.5rem;">
+                                    <input type="checkbox" id="m-remove-image"
+                                        style="width: 18px; height: 18px; cursor: pointer;">
+                                    <i class="fas fa-trash-alt"></i>
+                                    <span>Remove current profile image</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-status">Status</label>
+                                <select id="m-status" class="form-select">
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Injured">Injured</option>
+                                    <option value="Unpublished">Unpublished / Hidden</option>
+                                    <option value="Not Available">Not Available (Local)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="m-notes">Admin Notes</label>
+                                <input type="text" id="m-notes" class="form-input"
+                                    placeholder="Inner notes about player">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="form-submit" style="margin-top: 1rem;">
+                            Add Team Member
+                        </button>
+                    </form>
+
+                    <!-- Current Squad List -->
+                    <div class="item-list" id="admin-member-list" style="margin-top: 2rem;">
+                        <!-- Members will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Slider Management Card (Super Admin Only) -->
+                <div id="slider-management" class="dashboard-card hidden">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-images"></i></div>
+                        <h2 class="card-title">Slider Background Management</h2>
+                    </div>
+
+                    <form id="add-slider-form">
+                        <div class="form-group">
+                            <label class="form-label" for="sl-image-file">Upload Slide Image</label>
+                            <input type="file" id="sl-image-file" class="form-input" accept="image/*">
+                        </div>
+                        <button type="submit" class="form-submit accent">
+                            Add Slide
+                        </button>
+                    </form>
+
+                    <div id="slider-list" class="item-list" style="margin-top: 2rem;">
+                        <!-- Slider images will be injected here -->
+                    </div>
+                </div>
+
+                <!-- News Management Card -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon">📰</div>
+                        <h2 class="card-title">News Management</h2>
+                    </div>
+
+                    <form id="post-news-form">
+                        <div class="form-group">
+                            <label class="form-label" for="n-type">Type *</label>
+                            <select id="n-type" class="form-select" required>
+                                <option value="news">News</option>
+                                <option value="notice">Notice</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="n-headline">Headline *</label>
+                            <input type="text" id="n-headline" class="form-input" placeholder="Enter news headline"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="n-desc">Description *</label>
+                            <textarea id="n-desc" class="form-textarea" placeholder="Enter news content..."
+                                required></textarea>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label class="form-label" for="n-image-file">News Image (Optional)</label>
+                            <input type="file" id="n-image-file" class="form-input" accept="image/*">
+                        </div>
+
+                        <div class="form-group" id="n-remove-image-group" style="display: none;">
+                            <label class="remove-image-label"
+                                style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error-600);">
+                                <input type="checkbox" id="n-remove-image"
+                                    style="width: 18px; height: 18px; cursor: pointer;">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Remove current news image</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="form-submit accent">
+                            Broadcast News
+                        </button>
+                    </form>
+
+                    <p
+                        style="margin-top: 1rem; padding: 1rem; background: rgba(59, 125, 214, 0.1); border-radius: var(--radius-md); font-size: 0.9rem; color: var(--primary-700);">
+                        <strong>ℹ️ Real-time Broadcasting:</strong> News will be instantly pushed to the homepage.
+                    </p>
+
+                    <div id="admin-news-list" class="item-list" style="margin-top: 2rem;">
+                        <!-- News items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Club Settings Card (Super Admin Only) -->
+                <div id="club-settings" class="dashboard-card hidden">
+                    <div class="card-header">
+                        <div class="card-icon">🏟️</div>
+                        <h2 class="card-title">Club Settings</h2>
+                    </div>
+
+                    <form id="club-settings-form">
+                        <div class="form-group">
+                            <label class="form-label" for="c-name">Club Name</label>
+                            <input type="text" id="c-name" class="form-input" placeholder="AMSAL FC">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-address">Club Address</label>
+                            <input type="text" id="c-address" class="form-input" placeholder="City, Country">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-ground-location">Ground Location</label>
+                            <input type="text" id="c-ground-location" class="form-input"
+                                placeholder="Stadium name and location">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-ground-size">Ground Size</label>
+                            <input type="text" id="c-ground-size" class="form-input" placeholder="e.g., 105m x 68m">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-field-type">Field Type</label>
+                            <select id="c-field-type" class="form-select">
+                                <option value="Natural Grass">Natural Grass</option>
+                                <option value="Artificial Grass">Artificial Grass</option>
+                                <option value="Hybrid Grass">Hybrid Grass</option>
+                                <option value="Complete Dry">Complete Dry</option>
+                                <option value="Mix Dry Dusty Ground">Mix Dry Dusty Ground</option>
+                                <option value="Sand">Sand</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-stadium-capacity">Stadium Capacity</label>
+                            <input type="number" id="c-stadium-capacity" class="form-input" placeholder="e.g., 5000">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-nightlight">Nightlight Facility</label>
+                            <select id="c-nightlight" class="form-select">
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-ground-image-file">Ground Image (Upload from
+                                Device)</label>
+                            <input type="file" id="c-ground-image-file" class="form-input" accept="image/*">
+                            <p style="font-size: 0.85rem; color: var(--neutral-600); margin-top: 0.5rem;">Or enter image
+                                URL below</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="c-ground-image-url">Ground Image URL (Optional)</label>
+                            <input type="text" id="c-ground-image-url" class="form-input"
+                                placeholder="https://example.com/ground.jpg">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="remove-image-label"
+                                style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error-600);">
+                                <input type="checkbox" id="c-remove-ground-image"
+                                    style="width: 18px; height: 18px; cursor: pointer;">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Remove current ground image</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="form-submit">
+                            Update Club Settings
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Admin Management Card (Super Admin Only) -->
+                <div id="admin-management" class="dashboard-card hidden">
+                    <div class="card-header">
+                        <div class="card-icon">👥</div>
+                        <h2 class="card-title">Admin Management</h2>
+                    </div>
+
+                    <form id="add-admin-form">
+                        <div class="form-group">
+                            <label class="form-label" for="a-username">Username *</label>
+                            <input type="text" id="a-username" class="form-input" placeholder="Enter username" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="a-password">Password *</label>
+                            <input type="password" id="a-password" class="form-input" placeholder="Enter password"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="a-image-file">Admin Image (Optional)</label>
+                            <input type="file" id="a-image-file" class="form-input" accept="image/*">
+                        </div>
+
+                        <button type="submit" class="form-submit">
+                            Create Admin Account
+                        </button>
+                    </form>
+
+                    <!-- Admin List -->
+                    <div class="item-list" id="admin-list" style="margin-top: 1.5rem;">
+                        <!-- Admins will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Statistics Card -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon">📊</div>
+                        <h2 class="card-title">Quick Stats</h2>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div
+                            style="padding: 1.5rem; background: linear-gradient(135deg, rgba(59, 125, 214, 0.1) 0%, rgba(45, 90, 143, 0.05) 100%); border-radius: var(--radius-lg); text-align: center;">
+                            <p style="font-size: 2.5rem; font-weight: 900; color: var(--primary-600); margin-bottom: 0.5rem;"
+                                id="stat-members">0</p>
+                            <p style="color: var(--neutral-600); font-weight: 600; font-size: 0.9rem;">Team Members</p>
+                        </div>
+
+                        <div
+                            style="padding: 1.5rem; background: linear-gradient(135deg, rgba(255, 184, 0, 0.1) 0%, rgba(166, 124, 0, 0.05) 100%); border-radius: var(--radius-lg); text-align: center;">
+                            <p style="font-size: 2.5rem; font-weight: 900; color: var(--accent-600); margin-bottom: 0.5rem;"
+                                id="stat-news">0</p>
+                            <p style="color: var(--neutral-600); font-weight: 600; font-size: 0.9rem;">News Articles</p>
+                        </div>
+                    </div>
+
+                    <div
+                        style="margin-top: 1.5rem; padding: 1.5rem; background: var(--neutral-50); border-radius: var(--radius-lg);">
+                        <h4 style="font-size: 1rem; color: var(--primary-800); margin-bottom: 1rem;">Quick Actions</h4>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <a href="index.html"
+                                style="padding: 0.75rem 1rem; background: white; border-radius: var(--radius-md); color: var(--primary-700); font-weight: 600; text-align: center; box-shadow: var(--shadow-sm); transition: all var(--transition-base);">
+                                View Public Site
+                            </a>
+                            <button id="refresh-data"
+                                style="padding: 0.75rem 1rem; background: white; border-radius: var(--radius-md); color: var(--primary-700); font-weight: 600; box-shadow: var(--shadow-sm); transition: all var(--transition-base);">
+                                Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-close" onclick="closeEditModal()">&times;</div>
+            <div class="modal-header">
+                <h2 id="edit-modal-title">Edit Item</h2>
+                <p id="edit-modal-subtitle">Update information below</p>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-type"> <!-- 'member' or 'admin' -->
+
+                <div id="edit-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <!-- Fields will be injected here -->
+                </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label" for="edit-image-file">Update Image (Optional)</label>
+                    <input type="file" id="edit-image-file" class="form-input" accept="image/*">
+                </div>
+
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label class="remove-image-label"
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error-600);">
+                        <input type="checkbox" id="edit-remove-image"
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Remove current image</span>
+                    </label>
+                </div>
+
+                <div class="modal-footer" style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" id="delete-btn-modal" class="form-submit"
+                        style="background: var(--error-600); flex: 1; margin: 0;">
+                        <i class="fas fa-trash"></i> Delete Account
+                    </button>
+                    <button type="submit" class="form-submit accent" style="flex: 2; margin: 0;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="confirm-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 id="confirm-title">Are you sure?</h2>
+            <p id="confirm-message">
+                This action is permanent and cannot be undone. All associated data will be wiped from the system.
+            </p>
+            <div class="confirm-actions">
+                <button id="confirm-cancel" class="form-submit">
+                    Cancel
+                </button>
+                <button id="confirm-proceed" class="form-submit">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="client.js"></script>
+</body>
+
+</html>

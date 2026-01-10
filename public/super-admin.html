@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AMSAL FC Super Admin Dashboard - Manage administrators and system settings">
+    <title>Super Admin Dashboard | AMSAL FC</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Auth Check -->
+    <script>
+        if (sessionStorage.getItem('amsal_admin_role') !== 'super') {
+            window.location.href = 'login.html';
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-left">
+                <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed"
+                    onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+            </div>
+
+            <div class="nav-center">
+                <h1 class="club-title-white">AMSAL FC</h1>
+            </div>
+
+            <div class="nav-right">
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="index.html" title="Home"><i class="fas fa-home"></i><span> Home</span></a></li>
+                    <li><a href="admin.html" title="Admin Dashboard"><i class="fas fa-tachometer-alt"></i><span> Admin</span></a></li>
+                    <li><a href="super-admin.html" class="active" title="Super Admin"><i class="fas fa-user-shield"></i><span> Super Admin</span></a></li>
+                    <li><a href="#" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i><span> Logout</span></a></li>
+                </ul>
+                <button class="menu-toggle" id="mobile-menu" aria-label="Toggle Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Admin Container -->
+    <div class="admin-container">
+        <div class="container">
+            <!-- Dashboard Header -->
+            <div class="dashboard-header">
+                <div>
+                    <h1 class="dashboard-title">Super Admin Dashboard</h1>
+                    <p class="dashboard-subtitle">Manage administrators and system settings</p>
+                </div>
+                <div class="dashboard-user">
+                    <img id="super-admin-avatar" src="" alt="Super Admin" class="user-avatar" style="display: none;">
+                    <span id="super-admin-avatar-placeholder" class="user-placeholder">👑</span>
+                    <div>
+                        <p id="super-admin-username" class="user-name">Super Admin</p>
+                        <p id="super-admin-role" class="user-role">Super Administrator</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Admin Management Card -->
+                <div class="dashboard-card card-span-2">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-user-shield"></i></div>
+                        <h2 class="card-title">Admin Management</h2>
+                    </div>
+
+                    <form id="add-admin-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="a-username">
+                                    <i class="fas fa-user"></i> Username *
+                                </label>
+                                <input type="text" id="a-username" class="form-input" placeholder="Enter username" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="a-password">
+                                    <i class="fas fa-lock"></i> Password *
+                                </label>
+                                <input type="password" id="a-password" class="form-input" placeholder="Enter password" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="a-image">
+                                    <i class="fas fa-image"></i> Profile Image (Optional)
+                                </label>
+                                <input type="file" id="a-image" class="form-input" accept="image/*">
+                                <button type="button" id="upload-admin-image-btn" class="form-submit accent" style="margin-top: 0.5rem;">
+                                    <i class="fas fa-upload"></i> Upload Image
+                                </button>
+                                <input type="hidden" id="a-image-url">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="form-submit">
+                            <i class="fas fa-plus-circle"></i> Create Admin Account
+                        </button>
+                    </form>
+
+                    <div class="item-list" id="admin-list">
+                        <!-- Admin list will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="confirm-modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle confirm-icon"></i>
+                <h2 id="confirm-title">Are you sure?</h2>
+                <p id="confirm-message">This action cannot be undone.</p>
+            </div>
+            <div class="confirm-actions">
+                <button id="confirm-cancel" class="form-submit">Cancel</button>
+                <button id="confirm-proceed" class="form-submit">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+    <script>
+        // Load admin info
+        const adminData = JSON.parse(sessionStorage.getItem('amsal_admin_data') || '{}');
+        if (adminData.username) {
+            document.getElementById('super-admin-username').textContent = adminData.username;
+            if (adminData.imageUrl) {
+                document.getElementById('super-admin-avatar').src = adminData.imageUrl;
+                document.getElementById('super-admin-avatar').style.display = 'block';
+                document.getElementById('super-admin-avatar-placeholder').style.display = 'none';
+            }
+        }
+
+        // Logout functionality
+        document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        });
+
+        // Mobile menu toggle
+        document.getElementById('mobile-menu')?.addEventListener('click', () => {
+            document.getElementById('nav-links').classList.toggle('active');
+        });
+    </script>
+</body>
+
+</html>

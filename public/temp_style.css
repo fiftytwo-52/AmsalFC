@@ -1,0 +1,10 @@
+#ground-display-image {
+    display: none;
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    border-radius: var(--radius-lg);
+    margin-top: 2rem;
+    box-shadow: var(--shadow-xl);
+    object-fit: cover;
+}

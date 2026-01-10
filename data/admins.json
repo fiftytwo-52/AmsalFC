@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "username": "fiftytwo",
+    "password": "79263002",
+    "role": "super",
+    "imageUrl": "/uploads/1768059824717-831215467.png"
+  },
+  {
+    "id": "1768059848687",
+    "username": "test",
+    "password": "1111",
+    "role": "admin",
+    "imageUrl": "/uploads/1768059862207-178970667.jpg"
+  }
+]
