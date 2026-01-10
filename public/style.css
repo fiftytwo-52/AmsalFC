@@ -742,6 +742,85 @@ button {
     gap: 2rem;
 }
 
+/* Responsive Squad Cards */
+@media (max-width: 1200px) {
+    .squad-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .squad-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .squad-card {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .squad-image {
+        min-height: 240px;
+    }
+
+    .squad-image .default-avatar i {
+        font-size: 5rem;
+    }
+
+    .squad-info h4 {
+        font-size: 1.2rem;
+    }
+
+    .detail-chip {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .squad-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .squad-card {
+        max-width: 100%;
+    }
+
+    .squad-image {
+        min-height: 200px;
+    }
+
+    .squad-image .default-avatar i {
+        font-size: 4rem;
+    }
+
+    .squad-info {
+        padding: 1rem;
+    }
+
+    .squad-info h4 {
+        font-size: 1.1rem;
+    }
+
+    .squad-number {
+        min-width: 35px;
+        height: 35px;
+        font-size: 1.1rem;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .squad-status {
+        top: 0.75rem;
+        left: 0.75rem;
+        font-size: 0.6rem;
+        padding: 0.3rem 0.6rem;
+    }
+}
+
 /* ============================================
    PREMIUM PLAYER CARD DESIGN
    ============================================ */
@@ -758,6 +837,9 @@ button {
     cursor: pointer;
     max-width: 280px;
     margin: 0 auto;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
 }
 
 .squad-card::before {
@@ -789,12 +871,17 @@ button {
 .squad-image {
     position: relative;
     width: 100%;
+    min-height: 280px;
     aspect-ratio: 4 / 5;
     overflow: hidden;
     background: linear-gradient(160deg,
             var(--primary-700) 0%,
             var(--primary-500) 50%,
             var(--primary-400) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
 }
 
 .squad-image::after {
@@ -893,6 +980,7 @@ button {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
+    margin-top: auto;
 }
 
 .squad-info h4 {
@@ -1149,14 +1237,24 @@ button {
 .squad-image .default-avatar {
     width: 100%;
     height: 100%;
+    min-height: inherit;
     border-radius: 0;
     border: none;
     box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .squad-image .default-avatar i {
-    font-size: 5rem;
-    color: rgba(255, 255, 255, 0.4);
+    font-size: 6rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .staff-card-compact:hover .default-avatar,
@@ -2277,6 +2375,42 @@ html[data-theme="dark"] .position-option input[type="checkbox"]:checked~.positio
     overflow: hidden;
     box-shadow: var(--shadow-2xl);
     animation: modal-slide-up var(--transition-fast);
+    margin: 1rem;
+    width: calc(100% - 2rem);
+}
+
+/* Mobile Modal Improvements */
+@media (max-width: 768px) {
+    .player-detail-content {
+        max-width: 95vw;
+        margin: 0.5rem;
+        width: calc(100vw - 1rem);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-content {
+        margin: 0;
+        max-height: 90vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .player-detail-content {
+        max-width: 100vw;
+        margin: 0;
+        width: 100vw;
+        border-radius: 0;
+        max-height: 100vh;
+        height: 100vh;
+    }
+
+    .modal-content {
+        margin: 0;
+        border-radius: 0;
+        height: 100vh;
+        max-height: 100vh;
+    }
 }
 
 /* Modern Profile Card Layout */
@@ -2286,6 +2420,7 @@ html[data-theme="dark"] .position-option input[type="checkbox"]:checked~.positio
     overflow: hidden;
     max-width: 450px;
     margin: 0 auto;
+    width: 100%;
 }
 
 /* Profile Header Section */
@@ -2538,8 +2673,24 @@ html[data-theme="dark"] .position-option input[type="checkbox"]:checked~.positio
         height: 100px;
     }
 
+    .profile-header {
+        padding: 1.25rem;
+        gap: 0.75rem;
+    }
+
+    .player-name {
+        font-size: 1.4rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .position-tag {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
     }
 
     .stat-item {
@@ -2548,6 +2699,21 @@ html[data-theme="dark"] .position-option input[type="checkbox"]:checked~.positio
 
     .stat-value {
         font-size: 1rem;
+    }
+
+    .info-section h3,
+    .stats-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    .notes-section {
+        padding: 1rem;
+    }
+
+    .player-notes {
+        font-size: 0.9rem;
+        line-height: 1.5;
     }
 }
 
