@@ -1,3 +1,5 @@
+console.log('[Server] Starting AMSAL FC application...');
+
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -5,6 +7,8 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+
+console.log('[Server] Environment loaded, dependencies imported');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,8 +24,13 @@ const CLUB_FILE = path.join(DATA_DIR, 'club.json');
 const SLIDER_FILE = path.join(DATA_DIR, 'slider.json');
 
 // Create uploads directory if it doesn't exist
-if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+try {
+    if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        console.log('[Init] Created uploads directory');
+    }
+} catch (error) {
+    console.warn('[Init] Could not create uploads directory:', error.message);
 }
 
 // Configure multer for file uploads
@@ -103,37 +112,52 @@ const writeData = (filePath, data) => {
 };
 
 // Initialize Admins if not exists
-if (!fs.existsSync(ADMINS_FILE)) {
-    const initialAdmin = [{
-        id: '1',
-        username: process.env.SUPER_ADMIN_USERNAME || 'admin',
-        password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
-        role: 'super',
-        imageUrl: ''
-    }];
-    writeData(ADMINS_FILE, initialAdmin);
+try {
+    if (!fs.existsSync(ADMINS_FILE)) {
+        const initialAdmin = [{
+            id: '1',
+            username: process.env.SUPER_ADMIN_USERNAME || 'admin',
+            password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
+            role: 'super',
+            imageUrl: ''
+        }];
+        writeData(ADMINS_FILE, initialAdmin);
+        console.log('[Init] Created initial admin account');
+    }
+} catch (error) {
+    console.warn('[Init] Could not initialize admin data:', error.message);
 }
 
 // Initialize Slider if not exists
-if (!fs.existsSync(SLIDER_FILE)) {
-    const initialSlider = [
-        { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
-        { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
-    ];
-    writeData(SLIDER_FILE, initialSlider);
+try {
+    if (!fs.existsSync(SLIDER_FILE)) {
+        const initialSlider = [
+            { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
+            { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
+        ];
+        writeData(SLIDER_FILE, initialSlider);
+        console.log('[Init] Created initial slider data');
+    }
+} catch (error) {
+    console.warn('[Init] Could not initialize slider data:', error.message);
 }
 
 // Initialize Club Settings if not exists
-if (!fs.existsSync(CLUB_FILE)) {
-    const initialClub = {
-        name: 'AMSAL FC',
-        address: '',
-        groundLocation: '',
-        groundSize: '',
-        fieldType: 'Natural Grass',
-        groundImageUrl: ''
-    };
-    writeData(CLUB_FILE, initialClub);
+try {
+    if (!fs.existsSync(CLUB_FILE)) {
+        const initialClub = {
+            name: 'AMSAL FC',
+            address: '',
+            groundLocation: '',
+            groundSize: '',
+            fieldType: 'Natural Grass',
+            groundImageUrl: ''
+        };
+        writeData(CLUB_FILE, initialClub);
+        console.log('[Init] Created initial club data');
+    }
+} catch (error) {
+    console.warn('[Init] Could not initialize club data:', error.message);
 }
 
 // --- FILE UPLOAD ROUTES ---
