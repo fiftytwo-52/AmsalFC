@@ -29,13 +29,46 @@ npm run build
 
 2. Deploy the `dist/` folder to Netlify
 
-### Option 2: Full Node.js Deployment
+### Option 2: Render.com Deployment (Recommended)
 
-For full functionality with dynamic data, use platforms that support Node.js:
+For full functionality with dynamic data, Render.com provides excellent Node.js support with a free tier:
 
-- **Vercel**: Best for Next.js/React apps, but can deploy Express
+#### Deploy to Render.com
+
+1. **Environment Setup**:
+   - Copy `env-example.txt` to `.env` in your project root
+   - Update the admin credentials in `.env`:
+     ```bash
+     SUPER_ADMIN_USERNAME=your_admin_username
+     SUPER_ADMIN_PASSWORD=your_secure_password
+     ```
+
+2. **Connect your GitHub repository** to Render:
+   - Go to [render.com](https://render.com) and sign up/login
+   - Click "New +" and select "Web Service"
+   - Connect your GitHub repository
+
+3. **Configure the service**:
+   - **Name**: amsal-fc (or your preferred name)
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Environment**: Production
+
+4. **Environment Variables** (set these in Render dashboard):
+   - `SUPER_ADMIN_USERNAME`: your_admin_username
+   - `SUPER_ADMIN_PASSWORD`: your_secure_password
+   - `NODE_ENV`: production (automatically set by Render)
+
+5. **Deploy**:
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your app
+   - Your app will be available at `https://your-service-name.onrender.com`
+
+#### Alternative Node.js Platforms
+
 - **Railway**: Excellent for Node.js apps with database support
-- **Render**: Free tier available for Node.js applications
+- **Vercel**: Best for Next.js/React apps, but can deploy Express
 - **Heroku**: Traditional Node.js hosting
 
 ## Tech Stack

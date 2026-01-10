@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -105,8 +106,8 @@ const writeData = (filePath, data) => {
 if (!fs.existsSync(ADMINS_FILE)) {
     const initialAdmin = [{
         id: '1',
-        username: 'fiftytwo',
-        password: '79263002',
+        username: process.env.SUPER_ADMIN_USERNAME || 'admin',
+        password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
         role: 'super',
         imageUrl: ''
     }];

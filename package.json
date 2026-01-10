@@ -5,11 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "build": "echo 'Building for Vercel deployment...'",
-    "vercel-build": "echo 'Vercel will use server.js directly'"
+    "dev": "nodemon server.js"
   },
   "dependencies": {
+    "dotenv": "^16.3.1",
     "express": "^4.22.1",
     "multer": "^2.0.2",
     "socket.io": "^4.8.3"
