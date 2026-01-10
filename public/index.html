@@ -339,7 +339,77 @@
     <!-- Scripts -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
+
+    <!-- Custom Cursor Script -->
     <script>
+        // Custom Cursor Implementation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create cursor elements
+            const cursorDot = document.createElement('div');
+            const cursorOutline = document.createElement('div');
+
+            cursorDot.className = 'cursor-dot';
+            cursorOutline.className = 'cursor-outline';
+
+            document.body.appendChild(cursorDot);
+            document.body.appendChild(cursorOutline);
+
+            let mouseX = 0, mouseY = 0;
+            let cursorX = 0, cursorY = 0;
+            let outlineX = 0, outlineY = 0;
+
+            // Update mouse position
+            document.addEventListener('mousemove', function(e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            // Animation loop
+            function animateCursor() {
+                // Smooth cursor dot movement
+                cursorX += (mouseX - cursorX) * 0.2;
+                cursorY += (mouseY - cursorY) * 0.2;
+
+                // Smoother outline movement
+                outlineX += (mouseX - outlineX) * 0.1;
+                outlineY += (mouseY - outlineY) * 0.1;
+
+                cursorDot.style.left = cursorX + 'px';
+                cursorDot.style.top = cursorY + 'px';
+
+                cursorOutline.style.left = outlineX + 'px';
+                cursorOutline.style.top = outlineY + 'px';
+
+                requestAnimationFrame(animateCursor);
+            }
+
+            animateCursor();
+
+            // Hover effects for interactive elements
+            const interactiveElements = document.querySelectorAll('a, button, .btn, .card, .squad-card, .news-card, [role="button"], .clickable');
+
+            interactiveElements.forEach(element => {
+                element.addEventListener('mouseenter', () => {
+                    document.body.classList.add('cursor-hover');
+                });
+
+                element.addEventListener('mouseleave', () => {
+                    document.body.classList.remove('cursor-hover');
+                });
+            });
+
+            // Hide cursor on mobile/touch devices
+            if ('ontouchstart' in window) {
+                cursorDot.style.display = 'none';
+                cursorOutline.style.display = 'none';
+                document.body.style.cursor = 'default';
+
+                interactiveElements.forEach(element => {
+                    element.style.cursor = 'pointer';
+                });
+            }
+        });
+
         let captchaAnswer = 0;
         function generateCaptcha() {
             const num1 = Math.floor(Math.random() * 10) + 1;
