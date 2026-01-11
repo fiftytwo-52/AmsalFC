@@ -21,14 +21,15 @@
     "memberType": "Player",
     "positions": [
       "CB",
-      "LB"
+      "LB",
+      "LWB"
     ],
     "jerseyNo": "4",
     "age": "14",
     "address": "Amsal",
     "height": "165",
     "preferredFoot": "Right",
-    "imageUrl": "/uploads/1768146588664-794584638.jpg",
+    "imageUrl": "/uploads/1768153671985-883198125.jpg",
     "status": "Active",
     "notes": ""
   },
@@ -61,6 +62,22 @@
     "height": "",
     "preferredFoot": "",
     "imageUrl": "https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150",
+    "status": "Active",
+    "notes": ""
+  },
+  {
+    "id": "1768153697348",
+    "name": "Test Player Upload",
+    "memberType": "Player",
+    "positions": [
+      "GK"
+    ],
+    "jerseyNo": "",
+    "age": "",
+    "address": "",
+    "height": "",
+    "preferredFoot": "",
+    "imageUrl": "/uploads/1768153693854-960696036.png",
     "status": "Active",
     "notes": ""
   }

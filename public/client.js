@@ -576,13 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         <div class="overlay-position">
                                                             <i class="fas fa-user-tie"></i>
                                                             <span>${positionDisplay || 'Staff'}</span>
-                                                        </div>
+                                         </div>
                                                         ${m.notes ? `<div class="overlay-note"><i class="fas fa-sticky-note"></i><span>${m.notes}</span></div>` : ''}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                         </div>
+                                     </div>
                                  `;
                             }).join('');
 
@@ -932,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="overlay-position">
                                 <i class="fas fa-user"></i>
                                 <span>${positionDisplay || 'Player'}</span>
-                            </div>
+            </div>
                             <div class="overlay-stats">
                                 ${m.age ? `<div class="overlay-stat"><i class="fas fa-birthday-cake"></i><span>${m.age}y</span></div>` : ''}
                                 ${heightDisplay ? `<div class="overlay-stat"><i class="fas fa-ruler-vertical"></i><span>${heightDisplay}</span></div>` : ''}

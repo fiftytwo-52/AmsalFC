@@ -776,7 +776,7 @@ button {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
-}
+    }
 
     .squad-image .default-avatar i {
         font-size: 4rem;

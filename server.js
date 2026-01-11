@@ -472,20 +472,43 @@ app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
         const { type } = req.params;
         console.log(`[Upload] Processing ${type} image upload`);
 
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
-            // Use Vercel Blob storage for production
-            console.log(`[Upload] Using Vercel Blob storage`);
+        // Always use Vercel Blob for production deployments
+        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+            try {
+                console.log(`[Upload] Using Vercel Blob storage`);
 
-            const blob = await put(`${type}-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
-                access: 'public',
-                contentType: req.file.mimetype,
-            });
+                const blob = await put(`${type}-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                    access: 'public',
+                    contentType: req.file.mimetype,
+                });
 
-            console.log(`[Upload] ✅ Uploaded to Vercel Blob:`, blob.url);
-            res.json({ imageUrl: blob.url });
+                console.log(`[Upload] ✅ Uploaded to Vercel Blob:`, blob.url);
+                res.json({ imageUrl: blob.url });
+
+            } catch (blobError) {
+                console.error(`[Upload] ❌ Vercel Blob failed:`, blobError.message);
+
+                // Fallback: Try to save locally (won't work on Vercel but provides error details)
+                console.log(`[Upload] Attempting local fallback...`);
+                const imageUrl = `/uploads/${req.file.filename}`;
+
+                // On Vercel, file operations will fail, but we can at least provide the URL
+                if (process.env.VERCEL) {
+                    console.log(`[Upload] ⚠️  Running on Vercel - local file storage not available`);
+                    res.status(500).json({
+                        error: 'Image upload failed',
+                        details: 'Vercel Blob not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.',
+                        fallbackUrl: imageUrl
+                    });
+                } else {
+                    // Local development - save to file
+                    console.log(`[Upload] ✅ Saved locally:`, imageUrl);
+                    res.json({ imageUrl });
+                }
+            }
 
         } else {
-            // Fallback to local storage for development
+            // Local development fallback
             console.log(`[Upload] Using local file storage`);
             const imageUrl = `/uploads/${req.file.filename}`;
             console.log(`[Upload] ✅ Saved locally:`, imageUrl);
