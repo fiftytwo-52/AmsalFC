@@ -1,18 +1,19 @@
 [
   {
     "id": "1768063997651",
-    "name": "Ganesh Khatiwada",
+    "name": "Pratik Shrestha",
     "memberType": "Player",
     "positions": [
-      "GK"
+      "CB",
+      "LWB"
     ],
-    "jerseyNo": "",
-    "age": "",
-    "address": "",
-    "height": "",
-    "preferredFoot": "",
-    "imageUrl": "/uploads/1768117100356-997331131.jpg",
+    "jerseyNo": "4",
+    "age": "14",
+    "address": "Amsal",
+    "height": "165",
+    "preferredFoot": "Right",
+    "imageUrl": "",
     "status": "Active",
-    "notes": ""
+    "notes": "test player"
   }
 ]
