@@ -401,7 +401,7 @@ app.post('/api/members', async (req, res) => {
             address: address || '',
             height: height || '',
             preferredFoot: preferredFoot || '',
-            imageUrl: imageUrl || 'https://images.unsplash.com/photo-1553778263-73a83bab9b0c?q=80&w=800',
+            imageUrl: imageUrl || 'https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150',
             status: status || 'Active',
             notes: notes || ''
         };

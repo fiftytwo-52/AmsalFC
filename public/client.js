@@ -1459,35 +1459,30 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Delete Member Function (Global) - Fortified for Vercel KV
 window.deleteMember = async (id) => {
-    showConfirm('Wipe Member?', 'Warning: This will permanently wipe this information from the cloud. Continue?', async () => {
+    showConfirm('Remove Member?', 'Warning: This will permanently remove this member from the team. Continue?', async () => {
         try {
-            // 1. Get the current list from the cloud
-            const res = await fetch('/api/members');
-            const members = await res.json();
-
-            // 2. Filter out the member to delete
-            const updatedMembers = members.filter(m => String(m.id) !== String(id));
-
-            // 3. Send the whole new list back using POST
-            const saveRes = await fetch('/api/members', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedMembers)
+            // Use the proper DELETE endpoint
+            const deleteRes = await fetch(`/api/members/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
             });
 
-            if (saveRes.ok) {
+            if (deleteRes.ok) {
                 // Refresh data on screen
-                await fetchMembers(); 
-                showToast('Wiped', 'Information has been removed from cloud', 'success');
+                await fetchMembers();
+                showToast('Removed', 'Member has been removed from the team', 'success');
 
                 // Reset form if we were editing this person
                 const editIdField = document.getElementById('m-edit-id');
                 if (editIdField && editIdField.value === String(id)) {
                     document.getElementById('add-member-form').reset();
-                    location.reload(); // Simplest way to reset the UI state
+                    // Clear the edit state
+                    editIdField.value = '';
+                    document.getElementById('m-submit-btn').innerHTML = '<i class="fas fa-plus"></i> Add Member';
                 }
             } else {
-                throw new Error('Cloud update failed');
+                const errorData = await deleteRes.json();
+                throw new Error(errorData.error || 'Failed to remove member');
             }
         } catch (e) {
             console.error(e);
