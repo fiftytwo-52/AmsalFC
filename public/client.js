@@ -120,21 +120,48 @@ function formatDate(dateString) {
  * Upload image file
  */
 async function uploadImage(file, type = 'player') {
+    // Validate file before upload
+    if (!file) {
+        throw new Error('No file selected');
+    }
+
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        throw new Error('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+    }
+
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+        throw new Error('File size must be less than 5MB');
+    }
+
     const formData = new FormData();
     formData.append('image', file);
 
     try {
+        console.log(`Uploading ${file.name} (${Math.round(file.size/1024)}KB) as ${type}...`);
+
         const res = await fetch(`/api/upload/${type}`, {
             method: 'POST',
             body: formData
         });
 
-        if (!res.ok) throw new Error('Upload failed');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Upload failed' }));
+            throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+        }
 
         const data = await res.json();
+        if (!data.imageUrl) {
+            throw new Error('No image URL returned from server');
+        }
+
+        console.log('Upload successful:', data.imageUrl);
         return data.imageUrl;
     } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Upload error:', error.message);
         throw error;
     }
 }
