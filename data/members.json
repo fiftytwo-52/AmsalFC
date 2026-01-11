@@ -21,15 +21,14 @@
     "memberType": "Player",
     "positions": [
       "CB",
-      "LB",
-      "LWB"
+      "LB"
     ],
     "jerseyNo": "4",
     "age": "14",
     "address": "Amsal",
     "height": "165",
     "preferredFoot": "Right",
-    "imageUrl": "/uploads/1768153671985-883198125.jpg",
+    "imageUrl": "/uploads/1768171728790-752497708.jpg",
     "status": "Active",
     "notes": ""
   },
