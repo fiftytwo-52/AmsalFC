@@ -50,22 +50,6 @@
     "notes": ""
   },
   {
-    "id": "1768145508400",
-    "name": "testStaff",
-    "memberType": "Staff",
-    "positions": [
-      "Assistant Coach"
-    ],
-    "jerseyNo": "",
-    "age": "",
-    "address": "",
-    "height": "",
-    "preferredFoot": "",
-    "imageUrl": "https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150",
-    "status": "Active",
-    "notes": ""
-  },
-  {
     "id": "1768153697348",
     "name": "Test Player Upload",
     "memberType": "Player",
