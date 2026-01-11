@@ -9,6 +9,7 @@ const path = require('path');
 const multer = require('multer');
 const { put } = require('@vercel/blob');
 const { Redis } = require('@upstash/redis');
+const axios = require('axios');
 
 // Upstash Redis setup
 let redis = null;
@@ -20,7 +21,7 @@ if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
             url: process.env.KV_REST_API_URL,
             token: process.env.KV_REST_API_TOKEN,
         });
-        
+
         // Test connection
         redis.ping().then(() => {
             redisConnected = true;
@@ -64,8 +65,8 @@ try {
 
 // Configure multer for file uploads
 // Use memoryStorage for Vercel (serverless), diskStorage for local development
-const storage = (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) 
-    ? multer.memoryStorage() 
+const storage = (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN)
+    ? multer.memoryStorage()
     : multer.diskStorage({
         destination: (req, file, cb) => {
             cb(null, UPLOADS_DIR);
@@ -115,6 +116,7 @@ app.get('/api/debug', (req, res) => {
         redisConnected: redisConnected,
         hasRedisEnv: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
         hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+        hasImgbbKey: !!process.env.IMGBB_API_KEY,
         timestamp: new Date().toISOString()
     });
 });
@@ -181,7 +183,7 @@ app.get('/api/database-status', async (req, res) => {
 app.get('/api/export-database', async (req, res) => {
     try {
         console.log('[Export] Starting database export...');
-        
+
         const data = {
             members: await readData(MEMBERS_FILE),
             news: await readData(NEWS_FILE),
@@ -433,13 +435,21 @@ app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
             }
 
         } else {
-            // Temporary solution: Return placeholder URL
-            console.log(`[Upload] Using placeholder URL (no storage configured)`);
-            const placeholderUrl = type === 'slider'
-                ? `https://via.placeholder.com/1200x400?text=${type}+image`
-                : `https://via.placeholder.com/400x300?text=${type}+image`;
-            console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
-            res.json({ imageUrl: placeholderUrl });
+            // Local development fallback
+            if (req.file && req.file.filename) {
+                console.log(`[Upload] Using local disk storage`);
+                const localUrl = `/uploads/${req.file.filename}`;
+                console.log(`[Upload] ✅ Uploaded to local disk:`, localUrl);
+                res.json({ imageUrl: localUrl });
+            } else {
+                // Fallback to placeholder if no file was saved (shouldn't happen with diskStorage)
+                console.log(`[Upload] No storage configured and no local file saved, using placeholder`);
+                const placeholderUrl = type === 'slider'
+                    ? `https://via.placeholder.com/1200x400?text=${type}+image`
+                    : `https://via.placeholder.com/400x300?text=${type}+image`;
+                console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
+                res.json({ imageUrl: placeholderUrl });
+            }
         }
 
     } catch (error) {
@@ -483,12 +493,52 @@ app.post('/api/upload/admin', upload.single('image'), async (req, res) => {
                 });
             }
 
+        } else if (process.env.IMGBB_API_KEY) {
+            // Use imgBB for free image storage
+            try {
+                console.log(`[Upload] Using imgBB storage for admin`);
+
+                // Convert buffer to base64 for imgBB
+                const base64Image = req.file.buffer.toString('base64');
+
+                const formData = new FormData();
+                formData.append('key', process.env.IMGBB_API_KEY);
+                formData.append('image', base64Image);
+
+                const imgbbResponse = await axios.post('https://api.imgbb.com/1/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                if (imgbbResponse.data && imgbbResponse.data.data && imgbbResponse.data.data.url) {
+                    const imageUrl = imgbbResponse.data.data.url;
+                    console.log(`[Upload] ✅ Uploaded to imgBB:`, imageUrl);
+                    res.json({ imageUrl });
+                } else {
+                    throw new Error('Invalid imgBB response');
+                }
+            } catch (imgbbError) {
+                console.error(`[Upload] ❌ imgBB failed:`, imgbbError.message);
+                // Fallback to placeholder
+                const placeholderUrl = `https://via.placeholder.com/200x200?text=Admin+Photo+(Upload+Failed)`;
+                console.log(`[Upload] Using placeholder fallback:`, placeholderUrl);
+                res.json({ imageUrl: placeholderUrl });
+            }
         } else {
-            // Temporary solution: Return placeholder URL
-            console.log(`[Upload] Using placeholder URL for admin (no storage configured)`);
-            const placeholderUrl = `https://via.placeholder.com/200x200?text=Admin+Photo`;
-            console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
-            res.json({ imageUrl: placeholderUrl });
+            // Local development fallback
+            if (req.file && req.file.filename) {
+                console.log(`[Upload] Using local disk storage`);
+                const localUrl = `/uploads/${req.file.filename}`;
+                console.log(`[Upload] ✅ Uploaded to local disk:`, localUrl);
+                res.json({ imageUrl: localUrl });
+            } else {
+                // No storage configured - use placeholder
+                console.log(`[Upload] No storage configured and no local file saved, using placeholder`);
+                const placeholderUrl = `https://via.placeholder.com/200x200?text=No+Storage+Configured`;
+                console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
+                res.json({ imageUrl: placeholderUrl });
+            }
         }
 
     } catch (error) {
@@ -977,11 +1027,14 @@ app.post('/api/upload/slider', upload.single('image'), async (req, res) => {
             }
 
         } else {
-            // Temporary solution: Return placeholder URL
+            // Temporary solution: Return placeholder URL with upload info
             console.log(`[Upload] Using placeholder URL for slider (no storage configured)`);
-            const placeholderUrl = `https://via.placeholder.com/1200x400?text=Slider+Image`;
+            const placeholderUrl = `https://via.placeholder.com/1200x400/4F46E5/FFFFFF?text=Slider+Image+(Temporary)`;
             console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
-            res.json({ imageUrl: placeholderUrl });
+            res.json({
+                imageUrl: placeholderUrl,
+                note: "Using temporary placeholder. Add Vercel Blob token for real image storage."
+            });
         }
 
     } catch (error) {

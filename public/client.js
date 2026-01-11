@@ -160,10 +160,11 @@ async function uploadImage(file, type = 'player') {
 
         console.log('Upload successful:', data.imageUrl);
         return data.imageUrl;
-    } catch (error) {
-        console.error('Upload error:', error.message);
-        throw error;
-    }
+            } catch (error) {
+                console.error('Upload error:', error.message);
+                // If upload fails, don't proceed with saving
+                throw new Error(`Failed to upload image: ${error.message}`);
+            }
 }
 
 /**
@@ -1654,10 +1655,14 @@ window.deleteMember = async (id) => {
                     sliderList.innerHTML = slides.map(s => `
                         <div class="list-item">
                             <div class="item-info">
-                                <img src="${s.imageUrl}" class="item-avatar" style="border-radius: var(--radius-sm); width: 100px; height: 60px; object-fit: cover;">
+                                <img src="${s.imageUrl}"
+                                     class="item-avatar"
+                                     style="border-radius: var(--radius-sm); width: 100px; height: 60px; object-fit: cover;"
+                                     onerror="this.src='https://via.placeholder.com/100x60/cccccc/666666?text=No+Image'">
                                 <div class="item-details">
                                     <h5>Slide ${s.id}</h5>
                                     <p>${s.active ? '<span style="color: green;">Active</span>' : '<span style="color: red;">Inactive</span>'}</p>
+                                    ${s.imageUrl.includes('via.placeholder.com') ? '<small style="color: orange;">(Temporary placeholder)</small>' : ''}
                                 </div>
                             </div>
                             <div class="item-actions">
@@ -1688,6 +1693,11 @@ window.deleteMember = async (id) => {
                     showToast('Uploading', 'Uploading slide...', 'info');
                     const imageUrl = await uploadImage(file, 'slider');
 
+                    // Check if we got a placeholder URL (temporary solution)
+                    if (imageUrl.includes('via.placeholder.com')) {
+                        showToast('Warning', 'Using temporary image storage. Add Vercel Blob for real uploads.', 'warning');
+                    }
+
                     const res = await fetch('/api/slider');
                     const slides = await res.json();
 
@@ -1697,17 +1707,22 @@ window.deleteMember = async (id) => {
                         active: true
                     });
 
-                    await fetch('/api/slider', {
+                    const saveResponse = await fetch('/api/slider', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(slides)
                     });
 
+                    if (!saveResponse.ok) {
+                        throw new Error('Failed to save slide to database');
+                    }
+
                     addSliderForm.reset();
                     await fetchSliderImages();
                     showToast('Success', 'New slide added!', 'success');
                 } catch (error) {
-                    showToast('Error', 'Failed to add slide', 'error');
+                    console.error('Slide upload error:', error);
+                    showToast('Error', `Failed to add slide: ${error.message}`, 'error');
                 }
             });
         }
