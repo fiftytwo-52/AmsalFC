@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const { put } = require('@vercel/blob');
 
 // Redis setup for Vercel deployment
 let redis = null;
@@ -304,30 +305,79 @@ const writeData = async (filePath, data) => {
 // --- FILE UPLOAD ROUTES ---
 
 // Upload generic image (handles player, slider, admin, news, etc.)
-app.post('/api/upload/:type', upload.single('image'), (req, res) => {
+app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const imageUrl = `/uploads/${req.file.filename}`;
-        res.json({ imageUrl });
+
+        const { type } = req.params;
+        console.log(`[Upload] Processing ${type} image upload`);
+
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            // Use Vercel Blob storage for production
+            console.log(`[Upload] Using Vercel Blob storage`);
+
+            const blob = await put(`${type}-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                access: 'public',
+                contentType: req.file.mimetype,
+            });
+
+            console.log(`[Upload] ✅ Uploaded to Vercel Blob:`, blob.url);
+            res.json({ imageUrl: blob.url });
+
+        } else {
+            // Fallback to local storage for development
+            console.log(`[Upload] Using local file storage`);
+            const imageUrl = `/uploads/${req.file.filename}`;
+            console.log(`[Upload] ✅ Saved locally:`, imageUrl);
+            res.json({ imageUrl });
+        }
+
     } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: 'Failed to upload image' });
+        console.error('[Upload] ❌ Upload error:', error);
+        res.status(500).json({
+            error: 'Failed to upload image',
+            details: error.message
+        });
     }
 });
 
 // Upload admin image
-app.post('/api/upload/admin', upload.single('image'), (req, res) => {
+app.post('/api/upload/admin', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const imageUrl = `/uploads/${req.file.filename}`;
-        res.json({ imageUrl });
+
+        console.log(`[Upload] Processing admin image upload`);
+
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            // Use Vercel Blob storage for production
+            console.log(`[Upload] Using Vercel Blob storage for admin`);
+
+            const blob = await put(`admin-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                access: 'public',
+                contentType: req.file.mimetype,
+            });
+
+            console.log(`[Upload] ✅ Admin image uploaded to Vercel Blob:`, blob.url);
+            res.json({ imageUrl: blob.url });
+
+        } else {
+            // Fallback to local storage for development
+            console.log(`[Upload] Using local file storage for admin`);
+            const imageUrl = `/uploads/${req.file.filename}`;
+            console.log(`[Upload] ✅ Admin image saved locally:`, imageUrl);
+            res.json({ imageUrl });
+        }
+
     } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: 'Failed to upload image' });
+        console.error('[Upload] ❌ Admin upload error:', error);
+        res.status(500).json({
+            error: 'Failed to upload admin image',
+            details: error.message
+        });
     }
 });
 
@@ -467,12 +517,19 @@ app.put('/api/members/:id', async (req, res) => {
             preferredFoot, imageUrl, status, notes
         } = req.body;
 
+        console.log(`[API] Attempting to update member with ID: ${id}`);
+        console.log(`[API] Update data received:`, { name, imageUrl, memberType });
+
         const members = await readData(MEMBERS_FILE);
         const memberIndex = members.findIndex(m => String(m.id) === String(id));
 
         if (memberIndex === -1) {
+            console.log(`[API] Member with ID ${id} not found`);
             return res.status(404).json({ error: 'Member not found' });
         }
+
+        const originalMember = members[memberIndex];
+        console.log(`[API] Found member to update:`, originalMember.name);
 
         // Check for duplicate jersey numbers (if changing jersey number)
         if (jerseyNo !== undefined && jerseyNo !== members[memberIndex].jerseyNo) {
@@ -482,7 +539,33 @@ app.put('/api/members/:id', async (req, res) => {
             }
         }
 
-        members[memberIndex] = {
+        // Handle old image cleanup if imageUrl is being changed
+        if (imageUrl !== undefined && imageUrl !== originalMember.imageUrl && originalMember.imageUrl) {
+            // Handle Vercel Blob URLs
+            if (originalMember.imageUrl.includes('vercel-storage.com') && process.env.BLOB_READ_WRITE_TOKEN) {
+                try {
+                    // For Vercel Blob, we can't easily delete individual files via API
+                    // But we can log it for manual cleanup if needed
+                    console.log(`[API] Old Vercel Blob image to be cleaned up: ${originalMember.imageUrl}`);
+                } catch (blobError) {
+                    console.warn(`[API] Note: Old Vercel Blob image may need manual cleanup:`, blobError.message);
+                }
+            }
+            // Handle local files (development only)
+            else if (originalMember.imageUrl.startsWith('/uploads/')) {
+                try {
+                    const oldImagePath = path.join(__dirname, 'public', originalMember.imageUrl);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlinkSync(oldImagePath);
+                        console.log(`[API] Deleted old local image file: ${oldImagePath}`);
+                    }
+                } catch (imageError) {
+                    console.warn(`[API] Failed to delete old local image file:`, imageError.message);
+                }
+            }
+        }
+
+        const updatedMember = {
             ...members[memberIndex],
             name: name ? name.trim() : members[memberIndex].name,
             memberType: memberType !== undefined ? memberType : members[memberIndex].memberType,
@@ -497,41 +580,99 @@ app.put('/api/members/:id', async (req, res) => {
             notes: notes !== undefined ? notes : members[memberIndex].notes
         };
 
+        members[memberIndex] = updatedMember;
+
+        console.log(`[API] Updated member data:`, {
+            name: updatedMember.name,
+            imageUrl: updatedMember.imageUrl,
+            memberType: updatedMember.memberType
+        });
+
         await writeData(MEMBERS_FILE, members);
+        console.log(`[API] Successfully updated database`);
 
         // Emit real-time update
-        io.emit('member-updated', members[memberIndex]);
+        io.emit('member-updated', updatedMember);
+        console.log(`[API] Emitted real-time update`);
 
-        res.json(members[memberIndex]);
+        res.json(updatedMember);
     } catch (error) {
-        console.error('Error updating member:', error);
-        res.status(500).json({ error: 'Failed to update member' });
+        console.error('[API] Error updating member:', error);
+        res.status(500).json({
+            error: 'Failed to update member',
+            details: error.message
+        });
     }
 });
 
 // Delete a member
 app.delete('/api/members/:id', async (req, res) => {
     try {
-        const { id } = req.params;
+        console.log(`[API] Attempting to delete member with ID: ${req.params.id}`);
+
         let members = await readData(MEMBERS_FILE);
         const initialLength = members.length;
-        const deletedMember = members.find(m => String(m.id) === String(id));
+        const deletedMember = members.find(m => String(m.id) === String(req.params.id));
 
-        members = members.filter(m => String(m.id) !== String(id));
-
-        if (members.length === initialLength) {
+        if (!deletedMember) {
+            console.log(`[API] Member with ID ${req.params.id} not found`);
             return res.status(404).json({ error: 'Member not found' });
         }
 
+        console.log(`[API] Found member to delete:`, deletedMember.name);
+
+        // Handle image cleanup
+        if (deletedMember.imageUrl) {
+            // Handle Vercel Blob URLs
+            if (deletedMember.imageUrl.includes('vercel-storage.com') && process.env.BLOB_READ_WRITE_TOKEN) {
+                try {
+                    // For Vercel Blob, we can't easily delete individual files via API
+                    // But we can log it for manual cleanup if needed
+                    console.log(`[API] Vercel Blob image to be cleaned up: ${deletedMember.imageUrl}`);
+                } catch (blobError) {
+                    console.warn(`[API] Note: Vercel Blob image may need manual cleanup:`, blobError.message);
+                }
+            }
+            // Handle local files (development only)
+            else if (deletedMember.imageUrl.startsWith('/uploads/')) {
+                try {
+                    const imagePath = path.join(__dirname, 'public', deletedMember.imageUrl);
+                    if (fs.existsSync(imagePath)) {
+                        fs.unlinkSync(imagePath);
+                        console.log(`[API] Deleted local image file: ${imagePath}`);
+                    } else {
+                        console.log(`[API] Local image file not found: ${imagePath}`);
+                    }
+                } catch (imageError) {
+                    console.warn(`[API] Failed to delete local image file:`, imageError.message);
+                }
+            }
+        }
+
+        members = members.filter(m => String(m.id) !== String(req.params.id));
+        console.log(`[API] Filtered members, new length: ${members.length}`);
+
         await writeData(MEMBERS_FILE, members);
+        console.log(`[API] Successfully updated database`);
 
         // Emit real-time update
-        io.emit('member-deleted', { id });
+        io.emit('member-deleted', { id: req.params.id });
+        console.log(`[API] Emitted real-time update`);
 
-        res.json({ success: true });
+        res.json({
+            success: true,
+            deletedMember: {
+                id: deletedMember.id,
+                name: deletedMember.name,
+                imageUrl: deletedMember.imageUrl
+            }
+        });
     } catch (error) {
-        console.error('Error deleting member:', error);
-        res.status(500).json({ error: 'Failed to delete member' });
+        console.error('[API] Error deleting member:', error);
+        res.status(500).json({
+            error: 'Failed to delete member',
+            details: error.message
+        });
     }
 });
 
@@ -685,16 +826,40 @@ app.post('/api/slider', async (req, res) => {
 });
 
 // Upload slider image
-app.post('/api/upload/slider', upload.single('image'), (req, res) => {
+app.post('/api/upload/slider', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const imageUrl = `/uploads/${req.file.filename}`;
-        res.json({ imageUrl });
+
+        console.log(`[Upload] Processing slider image upload`);
+
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            // Use Vercel Blob storage for production
+            console.log(`[Upload] Using Vercel Blob storage for slider`);
+
+            const blob = await put(`slider-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                access: 'public',
+                contentType: req.file.mimetype,
+            });
+
+            console.log(`[Upload] ✅ Slider image uploaded to Vercel Blob:`, blob.url);
+            res.json({ imageUrl: blob.url });
+
+        } else {
+            // Fallback to local storage for development
+            console.log(`[Upload] Using local file storage for slider`);
+            const imageUrl = `/uploads/${req.file.filename}`;
+            console.log(`[Upload] ✅ Slider image saved locally:`, imageUrl);
+            res.json({ imageUrl });
+        }
+
     } catch (error) {
-        console.error('Slider upload error:', error);
-        res.status(500).json({ error: 'Failed to upload slider image' });
+        console.error('[Upload] ❌ Slider upload error:', error);
+        res.status(500).json({
+            error: 'Failed to upload slider image',
+            details: error.message
+        });
     }
 });
 
