@@ -3,6 +3,11 @@ const { Redis } = require('@upstash/redis');
 const fs = require('fs');
 const path = require('path');
 
+// Load environment variables from multiple possible files
+require('dotenv').config({ path: '.env' });
+require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env.development.local' });
+
 // Initialize Redis
 let redis;
 if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
@@ -10,8 +15,11 @@ if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
         url: process.env.KV_REST_API_URL,
         token: process.env.KV_REST_API_TOKEN,
     });
+    console.log('✅ Found Redis credentials in environment');
 } else {
     console.error('❌ Environment variables KV_REST_API_URL and KV_REST_API_TOKEN are required!');
+    console.log('💡 Make sure you have run: vercel env pull .env.development.local');
+    console.log('💡 Or create a .env file with your Redis credentials');
     process.exit(1);
 }
 
