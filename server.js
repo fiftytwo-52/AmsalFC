@@ -8,34 +8,33 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { put } = require('@vercel/blob');
+const { Redis } = require('@upstash/redis');
 
-// Redis setup for Vercel deployment
+// Upstash Redis setup
 let redis = null;
 let redisConnected = false;
 
 if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
-        const { Redis } = require('@upstash/redis');
         redis = new Redis({
             url: process.env.KV_REST_API_URL,
             token: process.env.KV_REST_API_TOKEN,
         });
-
-        // Test the connection
+        
+        // Test connection
         redis.ping().then(() => {
             redisConnected = true;
-            console.log('[Database] ✅ Redis KV connection initialized and tested');
+            console.log('[Database] ✅ Upstash Redis connection initialized and tested');
         }).catch((error) => {
             console.error('[Database] ❌ Redis connection test failed:', error.message);
             redis = null;
         });
-
     } catch (error) {
         console.error('[Database] ❌ Failed to initialize Redis:', error.message);
         redis = null;
     }
 } else {
-    console.log('[Database] ⚠️  Redis environment variables not found, using file storage');
+    console.log('[Database] ⚠️  Upstash Redis environment variables not found, using file storage');
 }
 
 console.log('[Server] Environment loaded, dependencies imported');
@@ -111,6 +110,7 @@ app.get('/logo.png', (req, res) => {
 app.get('/api/debug', (req, res) => {
     res.json({
         environment: process.env.NODE_ENV || 'development',
+        storageType: redisConnected ? 'redis' : 'file',
         redisAvailable: !!redis,
         redisConnected: redisConnected,
         hasRedisEnv: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
@@ -123,6 +123,7 @@ app.get('/api/debug', (req, res) => {
 app.get('/api/database-status', async (req, res) => {
     try {
         const status = {
+            storageType: redisConnected ? 'redis' : 'file',
             redis: {
                 available: !!redis,
                 connected: redisConnected,
@@ -139,15 +140,16 @@ app.get('/api/database-status', async (req, res) => {
             { file: MEMBERS_FILE, key: 'members', name: 'members' },
             { file: NEWS_FILE, key: 'news', name: 'news' },
             { file: ADMINS_FILE, key: 'admins', name: 'admins' },
-            { file: SLIDER_FILE, key: 'slider', name: 'slider' }
+            { file: SLIDER_FILE, key: 'slider', name: 'slider' },
+            { file: CLUB_FILE, key: 'club', name: 'club' }
         ];
 
-        for (const { key, name } of dataTypes) {
+        for (const { file, key, name } of dataTypes) {
             try {
                 // Try Redis first
                 if (redis && redisConnected) {
                     const redisData = await redis.get(key);
-                    if (redisData) {
+                    if (redisData !== null) {
                         status.data[name] = {
                             source: 'redis',
                             count: Array.isArray(redisData) ? redisData.length : Object.keys(redisData).length,
@@ -157,14 +159,13 @@ app.get('/api/database-status', async (req, res) => {
                     }
                 }
 
-                // Fallback to local file
-                const localData = await readData(dataTypes.find(dt => dt.key === key).file);
+                // Fallback to file
+                const localData = await readData(file);
                 status.data[name] = {
-                    source: 'local',
+                    source: 'file',
                     count: Array.isArray(localData) ? localData.length : Object.keys(localData).length,
                     sample: Array.isArray(localData) ? localData.slice(0, 1) : localData
                 };
-
             } catch (error) {
                 status.data[name] = { error: error.message };
             }
@@ -176,101 +177,31 @@ app.get('/api/database-status', async (req, res) => {
     }
 });
 
-// Database sync endpoint - migrate local data to Redis/Vercel Blob
-app.post('/api/sync-database', async (req, res) => {
+// Database export endpoint - export all data as JSON (for migration purposes)
+app.get('/api/export-database', async (req, res) => {
     try {
-        console.log('[Sync] Starting database synchronization...');
-
-        const results = {
-            members: { synced: 0, skipped: 0, errors: 0 },
-            news: { synced: 0, skipped: 0, errors: 0 },
-            admins: { synced: 0, skipped: 0, errors: 0 },
-            slider: { synced: 0, skipped: 0, errors: 0 }
+        console.log('[Export] Starting database export...');
+        
+        const data = {
+            members: await readData(MEMBERS_FILE),
+            news: await readData(NEWS_FILE),
+            admins: await readData(ADMINS_FILE),
+            slider: await readData(SLIDER_FILE),
+            club: await readData(CLUB_FILE),
+            exportedAt: new Date().toISOString()
         };
 
-        // Sync members
-        const members = await readData(MEMBERS_FILE);
-        console.log(`[Sync] Found ${members.length} members to sync`);
-
-        for (const member of members) {
-            try {
-                let imageUrl = member.imageUrl;
-
-                // Handle local upload files
-                if (imageUrl && imageUrl.startsWith('/uploads/')) {
-                    const localPath = path.join(__dirname, 'public', imageUrl);
-                    if (fs.existsSync(localPath) && process.env.BLOB_READ_WRITE_TOKEN) {
-                        console.log(`[Sync] Uploading ${member.name}'s image to Vercel Blob...`);
-                        const fileBuffer = fs.readFileSync(localPath);
-                        const { put } = require('@vercel/blob');
-
-                        const blob = await put(`member-${member.id}-${Date.now()}.jpg`, fileBuffer, {
-                            access: 'public',
-                            contentType: 'image/jpeg',
-                        });
-
-                        imageUrl = blob.url;
-                        console.log(`[Sync] ✅ Uploaded ${member.name}'s image: ${blob.url}`);
-                    }
-                }
-
-                // Handle UI avatar URLs - replace with default profile
-                if (imageUrl && imageUrl.includes('ui-avatars.com')) {
-                    imageUrl = '/defaultprofile.png';
-                    console.log(`[Sync] Replaced ${member.name}'s avatar with default profile`);
-                }
-
-                // Update member with new image URL
-                const updatedMember = { ...member, imageUrl };
-
-                // Save to Redis if available
-                if (redis && redisConnected) {
-                    await redis.set('members', members.map(m => m.id === member.id ? updatedMember : m));
-                    console.log(`[Sync] ✅ Saved ${member.name} to Redis`);
-                }
-
-                results.members.synced++;
-            } catch (error) {
-                console.error(`[Sync] ❌ Error syncing member ${member.name}:`, error.message);
-                results.members.errors++;
-            }
-        }
-
-        // Sync other data types (news, admins, slider) - similar logic
-        const dataTypes = [
-            { file: NEWS_FILE, key: 'news', name: 'news' },
-            { file: ADMINS_FILE, key: 'admins', name: 'admins' },
-            { file: SLIDER_FILE, key: 'slider', name: 'slider' }
-        ];
-
-        for (const { file, key, name } of dataTypes) {
-            try {
-                const data = await readData(file);
-                if (redis && redisConnected) {
-                    await redis.set(key, data);
-                    results[name].synced = data.length;
-                    console.log(`[Sync] ✅ Synced ${data.length} ${name} to Redis`);
-                }
-            } catch (error) {
-                console.error(`[Sync] ❌ Error syncing ${name}:`, error.message);
-                results[name].errors++;
-            }
-        }
-
-        console.log('[Sync] Database synchronization completed');
+        console.log('[Export] Database export completed');
         res.json({
             success: true,
-            message: 'Database synchronization completed',
-            results,
-            redisConnected,
-            blobAvailable: !!process.env.BLOB_READ_WRITE_TOKEN
+            message: 'Database export completed',
+            data
         });
-
     } catch (error) {
-        console.error('[Sync] ❌ Database sync failed:', error);
+        console.error('[Export] ❌ Database export failed:', error);
         res.status(500).json({
             success: false,
-            error: 'Database synchronization failed',
+            error: 'Database export failed',
             details: error.message
         });
     }
@@ -281,35 +212,31 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper to read JSON (with Redis support for Vercel)
+// Helper to read data (Redis with file fallback)
 const readData = async (filePath) => {
     const key = path.basename(filePath, '.json');
 
-    // Use Redis if available and connected (Vercel deployment)
+    // Try Redis first if available and connected
     if (redis && redisConnected) {
         try {
-            console.log(`[Database] Attempting to read ${key} from Redis...`);
             const data = await redis.get(key);
             if (data !== null) {
-                console.log(`[Database] ✅ Successfully read ${key} from Redis`);
+                console.log(`[Database] ✅ Successfully read ${key} from Redis (${Array.isArray(data) ? data.length : Object.keys(data).length} items)`);
                 return data;
             }
-            console.log(`[Database] ⚠️  ${key} not found in Redis, returning default`);
-            // Fallback to default if key doesn't exist
+            console.log(`[Database] ⚠️  ${key} not found in Redis, returning defaults`);
+            // Return appropriate default based on file type
             return key === 'club' ? {} : [];
         } catch (err) {
             console.error(`[Database] ❌ Failed to read ${key} from Redis:`, err.message);
-            console.error('[Database] Falling back to default values');
-            return key === 'club' ? {} : [];
+            console.log(`[Database] Falling back to file storage for ${key}`);
         }
     }
 
-    console.log(`[Database] Using local file storage for ${key}`);
-
-    // Local file-based storage (development)
+    // Fallback to file storage (for local development or if Redis fails)
     try {
         if (!fs.existsSync(filePath)) {
-            console.log(`[Database] ${path.basename(filePath)} does not exist, creating with defaults`);
+            console.log(`[Database] ${path.basename(filePath)} does not exist, returning defaults`);
             // Return appropriate default based on file type
             if (filePath === CLUB_FILE) return {};
             return [];
@@ -320,7 +247,7 @@ const readData = async (filePath) => {
             return filePath === CLUB_FILE ? {} : [];
         }
         const parsedData = JSON.parse(data);
-        console.log(`[Database] ✅ Successfully read ${key} from file (${parsedData.length || Object.keys(parsedData).length} items)`);
+        console.log(`[Database] ✅ Successfully read ${key} from file (${Array.isArray(parsedData) ? parsedData.length : Object.keys(parsedData).length} items)`);
         return parsedData;
     } catch (err) {
         console.error(`[Database] ❌ Failed to read ${path.basename(filePath)} from file:`, err.message);
@@ -328,27 +255,32 @@ const readData = async (filePath) => {
     }
 };
 
-// Helper to write JSON with atomic write for data integrity (with Redis support for Vercel)
+// Helper to write data (Redis with file fallback)
 const writeData = async (filePath, data) => {
     const key = path.basename(filePath, '.json');
 
-    // Use Redis if available and connected (Vercel deployment)
+    // Try Redis first if available and connected
     if (redis && redisConnected) {
         try {
-            console.log(`[Database] Attempting to save ${key} to Redis...`);
             await redis.set(key, data);
             console.log(`[Database] ✅ Successfully saved ${key} to Redis (${Array.isArray(data) ? data.length : Object.keys(data).length} items)`);
             return;
         } catch (err) {
             console.error(`[Database] ❌ Failed to write ${key} to Redis:`, err.message);
-            throw err; // Re-throw to allow callers to handle errors
+            console.log(`[Database] Falling back to file storage for ${key}`);
+            // Continue to file fallback
         }
     }
 
-    console.log(`[Database] Using local file storage to save ${key}`);
-
-    // Local file-based storage (development)
+    // Fallback to file storage (for local development or if Redis fails)
     try {
+        // Ensure data directory exists
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        // Atomic write: write to temp file first, then rename
         const tempPath = filePath + '.tmp';
         fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
         fs.renameSync(tempPath, filePath);
@@ -362,21 +294,8 @@ const writeData = async (filePath, data) => {
 // Initialize Admins if not exists
 (async () => {
     try {
-        if (!redis) {
-            // Only initialize if using file-based storage (local development)
-            if (!fs.existsSync(ADMINS_FILE)) {
-                const initialAdmin = [{
-                    id: '1',
-                    username: process.env.SUPER_ADMIN_USERNAME || 'admin',
-                    password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
-                    role: 'super',
-                    imageUrl: ''
-                }];
-                await writeData(ADMINS_FILE, initialAdmin);
-                console.log('[Init] Created initial admin account');
-            }
-        } else {
-            // For Redis, check if admins key exists
+        // Check if admins exist in Redis
+        if (redis && redisConnected) {
             const existingAdmins = await redis.get('admins');
             if (!existingAdmins) {
                 const initialAdmin = [{
@@ -389,6 +308,19 @@ const writeData = async (filePath, data) => {
                 await redis.set('admins', initialAdmin);
                 console.log('[Init] Created initial admin account in Redis');
             }
+        } else {
+            // Fallback to file storage
+            if (!fs.existsSync(ADMINS_FILE)) {
+                const initialAdmin = [{
+                    id: '1',
+                    username: process.env.SUPER_ADMIN_USERNAME || 'admin',
+                    password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
+                    role: 'super',
+                    imageUrl: ''
+                }];
+                await writeData(ADMINS_FILE, initialAdmin);
+                console.log('[Init] Created initial admin account');
+            }
         }
     } catch (error) {
         console.warn('[Init] Could not initialize admin data:', error.message);
@@ -398,18 +330,8 @@ const writeData = async (filePath, data) => {
 // Initialize Slider if not exists
 (async () => {
     try {
-        if (!redis) {
-            // Only initialize if using file-based storage (local development)
-            if (!fs.existsSync(SLIDER_FILE)) {
-                const initialSlider = [
-                    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
-                    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
-                ];
-                await writeData(SLIDER_FILE, initialSlider);
-                console.log('[Init] Created initial slider data');
-            }
-        } else {
-            // For Redis, check if slider key exists
+        // Check if slider exists in Redis
+        if (redis && redisConnected) {
             const existingSlider = await redis.get('slider');
             if (!existingSlider) {
                 const initialSlider = [
@@ -418,6 +340,16 @@ const writeData = async (filePath, data) => {
                 ];
                 await redis.set('slider', initialSlider);
                 console.log('[Init] Created initial slider data in Redis');
+            }
+        } else {
+            // Fallback to file storage
+            if (!fs.existsSync(SLIDER_FILE)) {
+                const initialSlider = [
+                    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
+                    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
+                ];
+                await writeData(SLIDER_FILE, initialSlider);
+                console.log('[Init] Created initial slider data');
             }
         }
     } catch (error) {
@@ -428,22 +360,8 @@ const writeData = async (filePath, data) => {
 // Initialize Club Settings if not exists
 (async () => {
     try {
-        if (!redis) {
-            // Only initialize if using file-based storage (local development)
-            if (!fs.existsSync(CLUB_FILE)) {
-                const initialClub = {
-                    name: 'AMSAL FC',
-                    address: '',
-                    groundLocation: '',
-                    groundSize: '',
-                    fieldType: 'Natural Grass',
-                    groundImageUrl: ''
-                };
-                await writeData(CLUB_FILE, initialClub);
-                console.log('[Init] Created initial club data');
-            }
-        } else {
-            // For Redis, check if club key exists
+        // Check if club exists in Redis
+        if (redis && redisConnected) {
             const existingClub = await redis.get('club');
             if (!existingClub) {
                 const initialClub = {
@@ -456,6 +374,20 @@ const writeData = async (filePath, data) => {
                 };
                 await redis.set('club', initialClub);
                 console.log('[Init] Created initial club data in Redis');
+            }
+        } else {
+            // Fallback to file storage
+            if (!fs.existsSync(CLUB_FILE)) {
+                const initialClub = {
+                    name: 'AMSAL FC',
+                    address: '',
+                    groundLocation: '',
+                    groundSize: '',
+                    fieldType: 'Natural Grass',
+                    groundImageUrl: ''
+                };
+                await writeData(CLUB_FILE, initialClub);
+                console.log('[Init] Created initial club data');
             }
         }
     } catch (error) {
