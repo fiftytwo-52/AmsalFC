@@ -64,15 +64,18 @@ try {
 }
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOADS_DIR);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Use memoryStorage for Vercel (serverless), diskStorage for local development
+const storage = (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) 
+    ? multer.memoryStorage() 
+    : multer.diskStorage({
+        destination: (req, file, cb) => {
+            cb(null, UPLOADS_DIR);
+        },
+        filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueSuffix + path.extname(file.originalname));
+        }
+    });
 
 const upload = multer({
     storage: storage,
@@ -488,23 +491,13 @@ app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
             } catch (blobError) {
                 console.error(`[Upload] ❌ Vercel Blob failed:`, blobError.message);
 
-                // Fallback: Try to save locally (won't work on Vercel but provides error details)
-                console.log(`[Upload] Attempting local fallback...`);
-                const imageUrl = `/uploads/${req.file.filename}`;
-
-                // On Vercel, file operations will fail, but we can at least provide the URL
-                if (process.env.VERCEL) {
-                    console.log(`[Upload] ⚠️  Running on Vercel - local file storage not available`);
-                    res.status(500).json({
-                        error: 'Image upload failed',
-                        details: 'Vercel Blob not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.',
-                        fallbackUrl: imageUrl
-                    });
-                } else {
-                    // Local development - save to file
-                    console.log(`[Upload] ✅ Saved locally:`, imageUrl);
-                    res.json({ imageUrl });
-                }
+                // When using memoryStorage, we can't fallback to disk storage easily
+                // Return error - user needs to configure BLOB_READ_WRITE_TOKEN properly
+                res.status(500).json({
+                    error: 'Image upload failed',
+                    details: 'Vercel Blob upload failed. Please check BLOB_READ_WRITE_TOKEN environment variable.',
+                    blobError: blobError.message
+                });
             }
 
         } else {
@@ -533,20 +526,31 @@ app.post('/api/upload/admin', upload.single('image'), async (req, res) => {
 
         console.log(`[Upload] Processing admin image upload`);
 
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
-            // Use Vercel Blob storage for production
-            console.log(`[Upload] Using Vercel Blob storage for admin`);
+        // Always use Vercel Blob for production deployments
+        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+            try {
+                console.log(`[Upload] Using Vercel Blob storage for admin`);
 
-            const blob = await put(`admin-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
-                access: 'public',
-                contentType: req.file.mimetype,
-            });
+                const blob = await put(`admin-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                    access: 'public',
+                    contentType: req.file.mimetype,
+                });
 
-            console.log(`[Upload] ✅ Admin image uploaded to Vercel Blob:`, blob.url);
-            res.json({ imageUrl: blob.url });
+                console.log(`[Upload] ✅ Admin image uploaded to Vercel Blob:`, blob.url);
+                res.json({ imageUrl: blob.url });
+
+            } catch (blobError) {
+                console.error(`[Upload] ❌ Vercel Blob failed:`, blobError.message);
+                // When using memoryStorage, we can't fallback to disk storage
+                res.status(500).json({
+                    error: 'Image upload failed',
+                    details: 'Vercel Blob upload failed. Please check BLOB_READ_WRITE_TOKEN environment variable.',
+                    blobError: blobError.message
+                });
+            }
 
         } else {
-            // Fallback to local storage for development
+            // Local development fallback
             console.log(`[Upload] Using local file storage for admin`);
             const imageUrl = `/uploads/${req.file.filename}`;
             console.log(`[Upload] ✅ Admin image saved locally:`, imageUrl);
@@ -1015,20 +1019,31 @@ app.post('/api/upload/slider', upload.single('image'), async (req, res) => {
 
         console.log(`[Upload] Processing slider image upload`);
 
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
-            // Use Vercel Blob storage for production
-            console.log(`[Upload] Using Vercel Blob storage for slider`);
+        // Always use Vercel Blob for production deployments
+        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+            try {
+                console.log(`[Upload] Using Vercel Blob storage for slider`);
 
-            const blob = await put(`slider-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
-                access: 'public',
-                contentType: req.file.mimetype,
-            });
+                const blob = await put(`slider-${Date.now()}-${req.file.originalname}`, req.file.buffer, {
+                    access: 'public',
+                    contentType: req.file.mimetype,
+                });
 
-            console.log(`[Upload] ✅ Slider image uploaded to Vercel Blob:`, blob.url);
-            res.json({ imageUrl: blob.url });
+                console.log(`[Upload] ✅ Slider image uploaded to Vercel Blob:`, blob.url);
+                res.json({ imageUrl: blob.url });
+
+            } catch (blobError) {
+                console.error(`[Upload] ❌ Vercel Blob failed:`, blobError.message);
+                // When using memoryStorage, we can't fallback to disk storage
+                res.status(500).json({
+                    error: 'Image upload failed',
+                    details: 'Vercel Blob upload failed. Please check BLOB_READ_WRITE_TOKEN environment variable.',
+                    blobError: blobError.message
+                });
+            }
 
         } else {
-            // Fallback to local storage for development
+            // Local development fallback
             console.log(`[Upload] Using local file storage for slider`);
             const imageUrl = `/uploads/${req.file.filename}`;
             console.log(`[Upload] ✅ Slider image saved locally:`, imageUrl);
