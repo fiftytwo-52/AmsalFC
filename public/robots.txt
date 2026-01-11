@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Allow all content
+Allow: /api/
+Allow: /uploads/
+Allow: /
+
+# Sitemap location
+Sitemap: https://amsal-fc.vercel.app/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1
