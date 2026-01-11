@@ -388,7 +388,7 @@ button {
     margin-bottom: 1.5rem;
     background: linear-gradient(135deg, #ffffff 0%, var(--accent-500) 100%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: rgb(252, 215, 10);
     background-clip: text;
     text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     line-height: 1.1;
