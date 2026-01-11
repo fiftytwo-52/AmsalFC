@@ -407,8 +407,8 @@ app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
         const { type } = req.params;
         console.log(`[Upload] Processing ${type} image upload`);
 
-        // Always use Vercel Blob for production deployments
-        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+        // Use Vercel Blob only if token is available
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
             try {
                 console.log(`[Upload] Using Vercel Blob storage`);
 
@@ -433,11 +433,13 @@ app.post('/api/upload/:type', upload.single('image'), async (req, res) => {
             }
 
         } else {
-            // Local development fallback
-            console.log(`[Upload] Using local file storage`);
-            const imageUrl = `/uploads/${req.file.filename}`;
-            console.log(`[Upload] ✅ Saved locally:`, imageUrl);
-            res.json({ imageUrl });
+            // Temporary solution: Return placeholder URL
+            console.log(`[Upload] Using placeholder URL (no storage configured)`);
+            const placeholderUrl = type === 'slider'
+                ? `https://via.placeholder.com/1200x400?text=${type}+image`
+                : `https://via.placeholder.com/400x300?text=${type}+image`;
+            console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
+            res.json({ imageUrl: placeholderUrl });
         }
 
     } catch (error) {
@@ -458,8 +460,8 @@ app.post('/api/upload/admin', upload.single('image'), async (req, res) => {
 
         console.log(`[Upload] Processing admin image upload`);
 
-        // Always use Vercel Blob for production deployments
-        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+        // Use Vercel Blob only if token is available
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
             try {
                 console.log(`[Upload] Using Vercel Blob storage for admin`);
 
@@ -482,11 +484,11 @@ app.post('/api/upload/admin', upload.single('image'), async (req, res) => {
             }
 
         } else {
-            // Local development fallback
-            console.log(`[Upload] Using local file storage for admin`);
-            const imageUrl = `/uploads/${req.file.filename}`;
-            console.log(`[Upload] ✅ Admin image saved locally:`, imageUrl);
-            res.json({ imageUrl });
+            // Temporary solution: Return placeholder URL
+            console.log(`[Upload] Using placeholder URL for admin (no storage configured)`);
+            const placeholderUrl = `https://via.placeholder.com/200x200?text=Admin+Photo`;
+            console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
+            res.json({ imageUrl: placeholderUrl });
         }
 
     } catch (error) {
@@ -951,8 +953,8 @@ app.post('/api/upload/slider', upload.single('image'), async (req, res) => {
 
         console.log(`[Upload] Processing slider image upload`);
 
-        // Always use Vercel Blob for production deployments
-        if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+        // Use Vercel Blob only if token is available
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
             try {
                 console.log(`[Upload] Using Vercel Blob storage for slider`);
 
@@ -975,11 +977,11 @@ app.post('/api/upload/slider', upload.single('image'), async (req, res) => {
             }
 
         } else {
-            // Local development fallback
-            console.log(`[Upload] Using local file storage for slider`);
-            const imageUrl = `/uploads/${req.file.filename}`;
-            console.log(`[Upload] ✅ Slider image saved locally:`, imageUrl);
-            res.json({ imageUrl });
+            // Temporary solution: Return placeholder URL
+            console.log(`[Upload] Using placeholder URL for slider (no storage configured)`);
+            const placeholderUrl = `https://via.placeholder.com/1200x400?text=Slider+Image`;
+            console.log(`[Upload] ✅ Using placeholder:`, placeholderUrl);
+            res.json({ imageUrl: placeholderUrl });
         }
 
     } catch (error) {
