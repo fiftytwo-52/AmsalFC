@@ -10,6 +10,8 @@ const multer = require('multer');
 
 // Redis setup for Vercel deployment
 let redis = null;
+let redisConnected = false;
+
 if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     try {
         const { Redis } = require('@upstash/redis');
@@ -17,10 +19,22 @@ if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
             url: process.env.KV_REST_API_URL,
             token: process.env.KV_REST_API_TOKEN,
         });
-        console.log('[Database] Redis KV connection initialized');
+
+        // Test the connection
+        redis.ping().then(() => {
+            redisConnected = true;
+            console.log('[Database] ✅ Redis KV connection initialized and tested');
+        }).catch((error) => {
+            console.error('[Database] ❌ Redis connection test failed:', error.message);
+            redis = null;
+        });
+
     } catch (error) {
-        console.warn('[Database] Failed to initialize Redis:', error.message);
+        console.error('[Database] ❌ Failed to initialize Redis:', error.message);
+        redis = null;
     }
+} else {
+    console.log('[Database] ⚠️  Redis environment variables not found, using file storage');
 }
 
 console.log('[Server] Environment loaded, dependencies imported');
@@ -89,6 +103,17 @@ app.get('/logo.png', (req, res) => {
     }
 });
 
+// Debug endpoint to check database status
+app.get('/api/debug', (req, res) => {
+    res.json({
+        environment: process.env.NODE_ENV || 'development',
+        redisAvailable: !!redis,
+        redisConnected: redisConnected,
+        hasRedisEnv: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Serve index.html as default
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -96,64 +121,78 @@ app.get('/', (req, res) => {
 
 // Helper to read JSON (with Redis support for Vercel)
 const readData = async (filePath) => {
-    // Use Redis if available (Vercel deployment)
-    if (redis) {
+    const key = path.basename(filePath, '.json');
+
+    // Use Redis if available and connected (Vercel deployment)
+    if (redis && redisConnected) {
         try {
-            const key = path.basename(filePath, '.json');
+            console.log(`[Database] Attempting to read ${key} from Redis...`);
             const data = await redis.get(key);
             if (data !== null) {
-                console.log(`[Database] Read ${key} from Redis`);
+                console.log(`[Database] ✅ Successfully read ${key} from Redis`);
                 return data;
             }
+            console.log(`[Database] ⚠️  ${key} not found in Redis, returning default`);
             // Fallback to default if key doesn't exist
             return key === 'club' ? {} : [];
         } catch (err) {
-            console.error(`[Database Error] Failed to read ${path.basename(filePath)} from Redis:`, err);
-            return path.basename(filePath, '.json') === 'club' ? {} : [];
+            console.error(`[Database] ❌ Failed to read ${key} from Redis:`, err.message);
+            console.error('[Database] Falling back to default values');
+            return key === 'club' ? {} : [];
         }
     }
+
+    console.log(`[Database] Using local file storage for ${key}`);
 
     // Local file-based storage (development)
     try {
         if (!fs.existsSync(filePath)) {
+            console.log(`[Database] ${path.basename(filePath)} does not exist, creating with defaults`);
             // Return appropriate default based on file type
             if (filePath === CLUB_FILE) return {};
             return [];
         }
         const data = fs.readFileSync(filePath, 'utf8');
         if (!data || data.trim() === '') {
+            console.log(`[Database] ${path.basename(filePath)} is empty, returning defaults`);
             return filePath === CLUB_FILE ? {} : [];
         }
-        return JSON.parse(data);
+        const parsedData = JSON.parse(data);
+        console.log(`[Database] ✅ Successfully read ${key} from file (${parsedData.length || Object.keys(parsedData).length} items)`);
+        return parsedData;
     } catch (err) {
-        console.error(`[Database Error] Failed to read ${path.basename(filePath)}:`, err);
+        console.error(`[Database] ❌ Failed to read ${path.basename(filePath)} from file:`, err.message);
         return filePath === CLUB_FILE ? {} : [];
     }
 };
 
 // Helper to write JSON with atomic write for data integrity (with Redis support for Vercel)
 const writeData = async (filePath, data) => {
-    // Use Redis if available (Vercel deployment)
-    if (redis) {
+    const key = path.basename(filePath, '.json');
+
+    // Use Redis if available and connected (Vercel deployment)
+    if (redis && redisConnected) {
         try {
-            const key = path.basename(filePath, '.json');
+            console.log(`[Database] Attempting to save ${key} to Redis...`);
             await redis.set(key, data);
-            console.log(`[Database] Successfully saved ${key} to Redis`);
+            console.log(`[Database] ✅ Successfully saved ${key} to Redis (${Array.isArray(data) ? data.length : Object.keys(data).length} items)`);
             return;
         } catch (err) {
-            console.error(`[Database Error] Failed to write ${path.basename(filePath)} to Redis:`, err);
+            console.error(`[Database] ❌ Failed to write ${key} to Redis:`, err.message);
             throw err; // Re-throw to allow callers to handle errors
         }
     }
+
+    console.log(`[Database] Using local file storage to save ${key}`);
 
     // Local file-based storage (development)
     try {
         const tempPath = filePath + '.tmp';
         fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
         fs.renameSync(tempPath, filePath);
-        console.log(`[Database] Successfully saved to ${path.basename(filePath)}`);
+        console.log(`[Database] ✅ Successfully saved ${key} to file (${Array.isArray(data) ? data.length : Object.keys(data).length} items)`);
     } catch (err) {
-        console.error(`[Database Error] Failed to write to ${path.basename(filePath)}:`, err);
+        console.error(`[Database] ❌ Failed to write ${key} to file:`, err.message);
         throw err; // Re-throw to allow callers to handle errors
     }
 };
