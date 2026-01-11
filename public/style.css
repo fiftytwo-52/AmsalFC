@@ -745,53 +745,38 @@ button {
 /* Responsive Squad Cards */
 @media (max-width: 1200px) {
     .squad-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         gap: 1.5rem;
     }
 }
 
 @media (max-width: 768px) {
     .squad-grid {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 1.25rem;
     }
+}
 
-    .squad-card {
-        max-width: 100%;
-        margin: 0;
-    }
-
-    .squad-image {
-        min-height: 240px;
-    }
-
-    .squad-image .default-avatar i {
-        font-size: 5rem;
-    }
-
-    .squad-info h4 {
-        font-size: 1.2rem;
-    }
-
-    .detail-chip {
-        font-size: 0.65rem;
-        padding: 0.25rem 0.5rem;
+@media (max-width: 640px) {
+    .squad-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
     }
 }
 
 @media (max-width: 480px) {
     .squad-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .squad-grid {
+        grid-template-columns: 1fr;
         gap: 1rem;
     }
-
-    .squad-card {
-        max-width: 100%;
-    }
-
-    .squad-image {
-        min-height: 200px;
-    }
+}
 
     .squad-image .default-avatar i {
         font-size: 4rem;
@@ -1386,6 +1371,313 @@ html[data-theme="dark"] .default-avatar {
 .staff-expanded-content .squad-card {
     max-width: 300px;
     width: 100%;
+}
+
+/* ============================================
+   MINIMALIST PLAYER CARD STYLES
+   ============================================ */
+
+.player-card-minimal {
+    min-height: 100%;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.player-card-minimal:hover {
+    transform: translateY(-4px);
+}
+
+.minimal-card {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    aspect-ratio: 3/4;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+}
+
+.player-card-minimal:hover .minimal-card {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.minimal-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.minimal-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.player-card-minimal:hover .minimal-image img {
+    transform: scale(1.05);
+}
+
+.image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.9) 0%,
+        rgba(0, 0, 0, 0.6) 40%,
+        rgba(0, 0, 0, 0.3) 70%,
+        transparent 100%
+    );
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1rem;
+}
+
+.overlay-content {
+    color: white;
+}
+
+.overlay-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.overlay-position {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.9;
+}
+
+.overlay-position i {
+    font-size: 0.8rem;
+    color: white;
+}
+
+.overlay-position span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+}
+
+.overlay-stats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.overlay-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(255, 255, 255, 0.15);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}
+
+.overlay-stat i {
+    font-size: 0.7rem;
+    color: white;
+    opacity: 0.9;
+}
+
+.overlay-note {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    opacity: 0.9;
+}
+
+.overlay-note i {
+    font-size: 0.7rem;
+    color: white;
+    opacity: 0.8;
+}
+
+.overlay-note span {
+    font-size: 0.75rem;
+    color: white;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* ============================================
+   RESPONSIVE MINIMAL PLAYER CARDS
+   ============================================ */
+
+/* Tablet and smaller screens */
+@media (max-width: 1024px) {
+    .minimal-card {
+        max-width: 250px;
+        border-radius: 0.875rem;
+    }
+
+    .overlay-name {
+        font-size: 1.25rem;
+    }
+
+    .overlay-position span {
+        font-size: 0.8rem;
+    }
+
+    .overlay-stat {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .overlay-stat i {
+        font-size: 0.65rem;
+    }
+
+    .overlay-note span {
+        font-size: 0.7rem;
+    }
+
+    .overlay-note i {
+        font-size: 0.65rem;
+    }
+}
+
+/* Mobile landscape and smaller tablets */
+@media (max-width: 768px) {
+    .minimal-card {
+        max-width: 220px;
+        border-radius: 0.75rem;
+    }
+
+    .overlay-name {
+        font-size: 1.15rem;
+    }
+
+    .overlay-position span {
+        font-size: 0.75rem;
+    }
+
+    .overlay-stat {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.35rem;
+    }
+
+    .overlay-stat i {
+        font-size: 0.6rem;
+    }
+
+    .overlay-note span {
+        font-size: 0.65rem;
+    }
+
+    .overlay-note i {
+        font-size: 0.6rem;
+    }
+}
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+    .minimal-card {
+        max-width: 180px;
+        border-radius: 0.625rem;
+    }
+
+    .overlay-name {
+        font-size: 1rem;
+    }
+
+    .overlay-position span {
+        font-size: 0.7rem;
+    }
+
+    .overlay-position i {
+        font-size: 0.75rem;
+    }
+
+    .overlay-stat {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.3rem;
+    }
+
+    .overlay-stat i {
+        font-size: 0.55rem;
+    }
+
+    .overlay-note span {
+        font-size: 0.6rem;
+    }
+
+    .overlay-note i {
+        font-size: 0.55rem;
+    }
+
+    .overlay-stats {
+        gap: 0.4rem;
+    }
+
+    .image-overlay {
+        padding: 0.8rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 360px) {
+    .minimal-card {
+        max-width: 160px;
+        border-radius: 0.5rem;
+    }
+
+    .overlay-name {
+        font-size: 0.9rem;
+    }
+
+    .overlay-position span {
+        font-size: 0.65rem;
+    }
+
+    .overlay-position i {
+        font-size: 0.7rem;
+    }
+
+    .overlay-stat {
+        font-size: 0.55rem;
+        padding: 0.15rem 0.25rem;
+    }
+
+    .overlay-stat i {
+        font-size: 0.5rem;
+    }
+
+    .overlay-note span {
+        font-size: 0.55rem;
+    }
+
+    .overlay-note i {
+        font-size: 0.5rem;
+    }
+
+    .overlay-stats {
+        gap: 0.3rem;
+    }
+
+    .image-overlay {
+        padding: 0.6rem;
+    }
 }
 
 /* Position Category Headers - Minimal */

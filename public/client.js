@@ -560,17 +560,29 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const style = isHidden ? 'display: none;' : '';
                                 const hiddenClass = isHidden ? 'hidden-card-staff' : '';
 
+                                // Use default profile image for placeholder if no image
+                                const defaultProfileImage = '/defaultprofile.png';
+                                const staffImage = m.imageUrl && m.imageUrl !== 'https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150' ? m.imageUrl : defaultProfileImage;
+                                const imgError = `this.onerror=null; this.src='${defaultProfileImage}'`;
+
                                 return `
-                                     <div class="staff-card-compact ${hiddenClass}" style="${style}">
-                                         <div class="staff-compact-image">
-                                             ${m.imageUrl ? `<img src="${m.imageUrl}" alt="${m.name}" onerror="${imgError}">` : `<span class='default-avatar'><i class='fas fa-user-circle'></i></span>`}
-                                         </div>
-                                         <div class="staff-compact-info">
-                                             <h4>${m.name}</h4>
-                                             <p class="staff-compact-role">${positionDisplay}</p>
-                                             ${m.notes ? `<p class="staff-compact-note">${m.notes}</p>` : ''}
-                                         </div>
-                                     </div>
+                                    <div class="player-card-minimal staff-card ${hiddenClass}" style="${style}" onclick="window.openPlayerModal('${m.id}')">
+                                        <div class="minimal-card">
+                                            <div class="minimal-image">
+                                                <img src="${staffImage}" alt="${m.name}" onerror="${imgError}" />
+                                                <div class="image-overlay">
+                                                    <div class="overlay-content">
+                                                        <div class="overlay-name">${m.name}</div>
+                                                        <div class="overlay-position">
+                                                            <i class="fas fa-user-tie"></i>
+                                                            <span>${positionDisplay || 'Staff'}</span>
+                                                        </div>
+                                                        ${m.notes ? `<div class="overlay-note"><i class="fas fa-sticky-note"></i><span>${m.notes}</span></div>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                  `;
                             }).join('');
 
@@ -893,27 +905,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const positions = Array.isArray(m.positions) ? m.positions : (m.position ? [m.position] : []);
         const positionDisplay = positions.length > 0 ? positions.join(' / ') : '';
 
-        const imgError = "this.onerror=null; this.parentNode.innerHTML='<span class=\"default-avatar\"><i class=\"fas fa-user-circle\"></i></span>'";
+        // Convert height to feet'inches format
+        const convertCmToFeetInches = (cm) => {
+            if (!cm || isNaN(cm)) return '';
+            const totalInches = cm / 2.54;
+            const feet = Math.floor(totalInches / 12);
+            const inches = Math.round(totalInches % 12);
+            return `${feet}'${inches}"`;
+        };
+        const heightDisplay = m.height ? convertCmToFeetInches(parseInt(m.height)) : '';
+
+        // Use default profile image for placeholder if no image
+        const defaultProfileImage = '/defaultprofile.png';
+        const playerImage = m.imageUrl && m.imageUrl !== 'https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150' ? m.imageUrl : defaultProfileImage;
+
+        const imgError = `this.onerror=null; this.src='${defaultProfileImage}'`;
 
         return `
-        <div class="squad-card ${isStaff ? 'staff-card' : ''}" onclick="window.openPlayerModal('${m.id}')">
-            <div class="squad-image">
-                ${m.imageUrl ? `<img src="${m.imageUrl}" alt="${m.name}" onerror="${imgError}">` : `<span class='default-avatar'><i class='fas fa-user-circle'></i></span>`}
-                ${!isStaff && m.jerseyNo ? `<div class="squad-number">${m.jerseyNo}</div>` : ''}
-                ${m.status && m.status !== 'Active' ? `<div class="squad-status ${m.status.toLowerCase()}">${m.status}</div>` : ''}
-            </div>
-            <div class="squad-info">
-                <h4>${m.name}</h4>
-                ${!isStaff ? `
-                <div class="player-details-row">
-                    ${positionDisplay ? `<span class="detail-chip position-chip" title="${positionDisplay}">${positionDisplay}</span>` : ''}
-                    ${m.age ? `<span class="detail-chip age-chip"><i class="fas fa-birthday-cake"></i> ${m.age}</span>` : ''}
-                    ${m.height ? `<span class="detail-chip height-chip"><i class="fas fa-ruler-vertical"></i> ${convertCmToFeetInches(m.height)}</span>` : ''}
-                    ${m.preferredFoot ? `<span class="detail-chip foot-chip"><i class="fas fa-shoe-prints"></i> ${m.preferredFoot.toLowerCase() === 'right' ? 'R' : m.preferredFoot.toLowerCase() === 'left' ? 'L' : 'B'}</span>` : ''}
-                </div>` : `
-                <div class="player-details-row">
-                    ${positionDisplay ? `<span class="detail-chip position-chip" title="${positionDisplay}">${positionDisplay}</span>` : ''}
-                </div>`}
+        <div class="player-card-minimal ${isStaff ? 'staff-card' : ''}" onclick="window.openPlayerModal('${m.id}')">
+            <div class="minimal-card">
+                <div class="minimal-image">
+                    <img src="${playerImage}" alt="${m.name}" onerror="${imgError}" />
+                    <div class="image-overlay">
+                        <div class="overlay-content">
+                            <div class="overlay-name">${m.name}</div>
+                            <div class="overlay-position">
+                                <i class="fas fa-user"></i>
+                                <span>${positionDisplay || 'Player'}</span>
+                            </div>
+                            <div class="overlay-stats">
+                                ${m.age ? `<div class="overlay-stat"><i class="fas fa-birthday-cake"></i><span>${m.age}y</span></div>` : ''}
+                                ${heightDisplay ? `<div class="overlay-stat"><i class="fas fa-ruler-vertical"></i><span>${heightDisplay}</span></div>` : ''}
+                                ${m.preferredFoot ? `<div class="overlay-stat"><i class="fas fa-shoe-prints"></i><span>${m.preferredFoot.charAt(0).toUpperCase()}</span></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;

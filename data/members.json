@@ -1,17 +1,66 @@
 [
   {
-    "id": "1768132450950",
+    "id": "1768134595891",
     "name": "Ganesh Khatiwada",
+    "memberType": "Staff",
+    "positions": [
+      "Team Doctor"
+    ],
+    "jerseyNo": "",
+    "age": "",
+    "address": "",
+    "height": "",
+    "preferredFoot": "",
+    "imageUrl": "",
+    "status": "Active",
+    "notes": "Sponcer of vale cup"
+  },
+  {
+    "id": "1768135104869",
+    "name": "Pratik Shrestha",
+    "memberType": "Player",
+    "positions": [
+      "CB",
+      "LWB"
+    ],
+    "jerseyNo": "4",
+    "age": "14",
+    "address": "Amsal",
+    "height": "165",
+    "preferredFoot": "Right",
+    "imageUrl": "/uploads/1768143864467-939649444.jpg",
+    "status": "Active",
+    "notes": ""
+  },
+  {
+    "id": "1768145472033",
+    "name": "Test Player",
     "memberType": "Player",
     "positions": [
       "GK"
     ],
-    "jerseyNo": "11",
-    "age": "24",
-    "address": "Amsal",
-    "height": "183",
-    "preferredFoot": "Right",
-    "imageUrl": "/uploads/1768132716673-797972856.jpg",
+    "jerseyNo": "",
+    "age": "",
+    "address": "",
+    "height": "",
+    "preferredFoot": "",
+    "imageUrl": "https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150",
+    "status": "Active",
+    "notes": ""
+  },
+  {
+    "id": "1768145508400",
+    "name": "testStaff",
+    "memberType": "Staff",
+    "positions": [
+      "Assistant Coach"
+    ],
+    "jerseyNo": "",
+    "age": "",
+    "address": "",
+    "height": "",
+    "preferredFoot": "",
+    "imageUrl": "https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150",
     "status": "Active",
     "notes": ""
   }
