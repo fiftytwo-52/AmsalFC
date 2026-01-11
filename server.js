@@ -111,8 +111,166 @@ app.get('/api/debug', (req, res) => {
         redisAvailable: !!redis,
         redisConnected: redisConnected,
         hasRedisEnv: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
         timestamp: new Date().toISOString()
     });
+});
+
+// Check current database content
+app.get('/api/database-status', async (req, res) => {
+    try {
+        const status = {
+            redis: {
+                available: !!redis,
+                connected: redisConnected,
+                hasEnvVars: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+            },
+            blob: {
+                available: !!process.env.BLOB_READ_WRITE_TOKEN
+            },
+            data: {}
+        };
+
+        // Check each data type
+        const dataTypes = [
+            { file: MEMBERS_FILE, key: 'members', name: 'members' },
+            { file: NEWS_FILE, key: 'news', name: 'news' },
+            { file: ADMINS_FILE, key: 'admins', name: 'admins' },
+            { file: SLIDER_FILE, key: 'slider', name: 'slider' }
+        ];
+
+        for (const { key, name } of dataTypes) {
+            try {
+                // Try Redis first
+                if (redis && redisConnected) {
+                    const redisData = await redis.get(key);
+                    if (redisData) {
+                        status.data[name] = {
+                            source: 'redis',
+                            count: Array.isArray(redisData) ? redisData.length : Object.keys(redisData).length,
+                            sample: Array.isArray(redisData) ? redisData.slice(0, 1) : redisData
+                        };
+                        continue;
+                    }
+                }
+
+                // Fallback to local file
+                const localData = await readData(dataTypes.find(dt => dt.key === key).file);
+                status.data[name] = {
+                    source: 'local',
+                    count: Array.isArray(localData) ? localData.length : Object.keys(localData).length,
+                    sample: Array.isArray(localData) ? localData.slice(0, 1) : localData
+                };
+
+            } catch (error) {
+                status.data[name] = { error: error.message };
+            }
+        }
+
+        res.json(status);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Database sync endpoint - migrate local data to Redis/Vercel Blob
+app.post('/api/sync-database', async (req, res) => {
+    try {
+        console.log('[Sync] Starting database synchronization...');
+
+        const results = {
+            members: { synced: 0, skipped: 0, errors: 0 },
+            news: { synced: 0, skipped: 0, errors: 0 },
+            admins: { synced: 0, skipped: 0, errors: 0 },
+            slider: { synced: 0, skipped: 0, errors: 0 }
+        };
+
+        // Sync members
+        const members = await readData(MEMBERS_FILE);
+        console.log(`[Sync] Found ${members.length} members to sync`);
+
+        for (const member of members) {
+            try {
+                let imageUrl = member.imageUrl;
+
+                // Handle local upload files
+                if (imageUrl && imageUrl.startsWith('/uploads/')) {
+                    const localPath = path.join(__dirname, 'public', imageUrl);
+                    if (fs.existsSync(localPath) && process.env.BLOB_READ_WRITE_TOKEN) {
+                        console.log(`[Sync] Uploading ${member.name}'s image to Vercel Blob...`);
+                        const fileBuffer = fs.readFileSync(localPath);
+                        const { put } = require('@vercel/blob');
+
+                        const blob = await put(`member-${member.id}-${Date.now()}.jpg`, fileBuffer, {
+                            access: 'public',
+                            contentType: 'image/jpeg',
+                        });
+
+                        imageUrl = blob.url;
+                        console.log(`[Sync] ✅ Uploaded ${member.name}'s image: ${blob.url}`);
+                    }
+                }
+
+                // Handle UI avatar URLs - replace with default profile
+                if (imageUrl && imageUrl.includes('ui-avatars.com')) {
+                    imageUrl = '/defaultprofile.png';
+                    console.log(`[Sync] Replaced ${member.name}'s avatar with default profile`);
+                }
+
+                // Update member with new image URL
+                const updatedMember = { ...member, imageUrl };
+
+                // Save to Redis if available
+                if (redis && redisConnected) {
+                    await redis.set('members', members.map(m => m.id === member.id ? updatedMember : m));
+                    console.log(`[Sync] ✅ Saved ${member.name} to Redis`);
+                }
+
+                results.members.synced++;
+            } catch (error) {
+                console.error(`[Sync] ❌ Error syncing member ${member.name}:`, error.message);
+                results.members.errors++;
+            }
+        }
+
+        // Sync other data types (news, admins, slider) - similar logic
+        const dataTypes = [
+            { file: NEWS_FILE, key: 'news', name: 'news' },
+            { file: ADMINS_FILE, key: 'admins', name: 'admins' },
+            { file: SLIDER_FILE, key: 'slider', name: 'slider' }
+        ];
+
+        for (const { file, key, name } of dataTypes) {
+            try {
+                const data = await readData(file);
+                if (redis && redisConnected) {
+                    await redis.set(key, data);
+                    results[name].synced = data.length;
+                    console.log(`[Sync] ✅ Synced ${data.length} ${name} to Redis`);
+                }
+            } catch (error) {
+                console.error(`[Sync] ❌ Error syncing ${name}:`, error.message);
+                results[name].errors++;
+            }
+        }
+
+        console.log('[Sync] Database synchronization completed');
+        res.json({
+            success: true,
+            message: 'Database synchronization completed',
+            results,
+            redisConnected,
+            blobAvailable: !!process.env.BLOB_READ_WRITE_TOKEN
+        });
+
+    } catch (error) {
+        console.error('[Sync] ❌ Database sync failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database synchronization failed',
+            details: error.message
+        });
+    }
 });
 
 // Serve index.html as default
