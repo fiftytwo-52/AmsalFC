@@ -1456,38 +1456,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Delete Member Function (Global) - Fortified
-    window.deleteMember = async (id) => {
-        showConfirm('Wipe Member?', 'Warning: This will permanently wipe this information. Continue?', async () => {
-            try {
-                const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    await fetchMembers();
-                    showToast('Wiped', 'Information has been completely removed', 'success');
+  
+    // Delete Member Function (Global) - Fortified for Vercel KV
+window.deleteMember = async (id) => {
+    showConfirm('Wipe Member?', 'Warning: This will permanently wipe this information from the cloud. Continue?', async () => {
+        try {
+            // 1. Get the current list from the cloud
+            const res = await fetch('/api/members');
+            const members = await res.json();
 
-                    // If the deleted member was being edited, reset the form
-                    const editIdField = document.getElementById('m-edit-id');
-                    if (editIdField && editIdField.value === String(id)) {
-                        addMemberForm.reset();
-                        editIdField.value = '';
-                        const formActions = document.getElementById('form-edit-actions');
-                        if (formActions) {
-                            const submitBtn = formActions.querySelector('button[type="submit"]');
-                            formActions.parentNode.insertBefore(submitBtn, formActions);
-                            formActions.remove();
-                        }
-                        const mainSubmitBtn = document.querySelector('#add-member-form button[type="submit"]');
-                        mainSubmitBtn.innerHTML = 'Add Team Member';
-                        mainSubmitBtn.classList.remove('accent');
-                    }
-                } else {
-                    throw new Error('Delete failed');
+            // 2. Filter out the member to delete
+            const updatedMembers = members.filter(m => String(m.id) !== String(id));
+
+            // 3. Send the whole new list back using POST
+            const saveRes = await fetch('/api/members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedMembers)
+            });
+
+            if (saveRes.ok) {
+                // Refresh data on screen
+                await fetchMembers(); 
+                showToast('Wiped', 'Information has been removed from cloud', 'success');
+
+                // Reset form if we were editing this person
+                const editIdField = document.getElementById('m-edit-id');
+                if (editIdField && editIdField.value === String(id)) {
+                    document.getElementById('add-member-form').reset();
+                    location.reload(); // Simplest way to reset the UI state
                 }
-            } catch (e) {
-                showToast('Error', 'Could not remove information', 'error');
+            } else {
+                throw new Error('Cloud update failed');
             }
-        });
-    };
+        } catch (e) {
+            console.error(e);
+            showToast('Error', 'Could not remove information', 'error');
+        }
+    });
+};
+
+
+
+
+
+
 
     // ============================================
     // CLUB SETTINGS (SUPER ADMIN ONLY)

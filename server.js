@@ -8,6 +8,21 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
+// Redis setup for Vercel deployment
+let redis = null;
+if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+        const { Redis } = require('@upstash/redis');
+        redis = new Redis({
+            url: process.env.KV_REST_API_URL,
+            token: process.env.KV_REST_API_TOKEN,
+        });
+        console.log('[Database] Redis KV connection initialized');
+    } catch (error) {
+        console.warn('[Database] Failed to initialize Redis:', error.message);
+    }
+}
+
 console.log('[Server] Environment loaded, dependencies imported');
 
 const app = express();
@@ -79,8 +94,26 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper to read JSON
-const readData = (filePath) => {
+// Helper to read JSON (with Redis support for Vercel)
+const readData = async (filePath) => {
+    // Use Redis if available (Vercel deployment)
+    if (redis) {
+        try {
+            const key = path.basename(filePath, '.json');
+            const data = await redis.get(key);
+            if (data !== null) {
+                console.log(`[Database] Read ${key} from Redis`);
+                return data;
+            }
+            // Fallback to default if key doesn't exist
+            return key === 'club' ? {} : [];
+        } catch (err) {
+            console.error(`[Database Error] Failed to read ${path.basename(filePath)} from Redis:`, err);
+            return path.basename(filePath, '.json') === 'club' ? {} : [];
+        }
+    }
+
+    // Local file-based storage (development)
     try {
         if (!fs.existsSync(filePath)) {
             // Return appropriate default based on file type
@@ -98,8 +131,22 @@ const readData = (filePath) => {
     }
 };
 
-// Helper to write JSON with atomic write for data integrity
-const writeData = (filePath, data) => {
+// Helper to write JSON with atomic write for data integrity (with Redis support for Vercel)
+const writeData = async (filePath, data) => {
+    // Use Redis if available (Vercel deployment)
+    if (redis) {
+        try {
+            const key = path.basename(filePath, '.json');
+            await redis.set(key, data);
+            console.log(`[Database] Successfully saved ${key} to Redis`);
+            return;
+        } catch (err) {
+            console.error(`[Database Error] Failed to write ${path.basename(filePath)} to Redis:`, err);
+            throw err; // Re-throw to allow callers to handle errors
+        }
+    }
+
+    // Local file-based storage (development)
     try {
         const tempPath = filePath + '.tmp';
         fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
@@ -112,53 +159,108 @@ const writeData = (filePath, data) => {
 };
 
 // Initialize Admins if not exists
-try {
-    if (!fs.existsSync(ADMINS_FILE)) {
-        const initialAdmin = [{
-            id: '1',
-            username: process.env.SUPER_ADMIN_USERNAME || 'admin',
-            password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
-            role: 'super',
-            imageUrl: ''
-        }];
-        writeData(ADMINS_FILE, initialAdmin);
-        console.log('[Init] Created initial admin account');
+(async () => {
+    try {
+        if (!redis) {
+            // Only initialize if using file-based storage (local development)
+            if (!fs.existsSync(ADMINS_FILE)) {
+                const initialAdmin = [{
+                    id: '1',
+                    username: process.env.SUPER_ADMIN_USERNAME || 'admin',
+                    password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
+                    role: 'super',
+                    imageUrl: ''
+                }];
+                await writeData(ADMINS_FILE, initialAdmin);
+                console.log('[Init] Created initial admin account');
+            }
+        } else {
+            // For Redis, check if admins key exists
+            const existingAdmins = await redis.get('admins');
+            if (!existingAdmins) {
+                const initialAdmin = [{
+                    id: '1',
+                    username: process.env.SUPER_ADMIN_USERNAME || 'admin',
+                    password: process.env.SUPER_ADMIN_PASSWORD || 'password123',
+                    role: 'super',
+                    imageUrl: ''
+                }];
+                await redis.set('admins', initialAdmin);
+                console.log('[Init] Created initial admin account in Redis');
+            }
+        }
+    } catch (error) {
+        console.warn('[Init] Could not initialize admin data:', error.message);
     }
-} catch (error) {
-    console.warn('[Init] Could not initialize admin data:', error.message);
-}
+})();
 
 // Initialize Slider if not exists
-try {
-    if (!fs.existsSync(SLIDER_FILE)) {
-        const initialSlider = [
-            { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
-            { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
-        ];
-        writeData(SLIDER_FILE, initialSlider);
-        console.log('[Init] Created initial slider data');
+(async () => {
+    try {
+        if (!redis) {
+            // Only initialize if using file-based storage (local development)
+            if (!fs.existsSync(SLIDER_FILE)) {
+                const initialSlider = [
+                    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
+                    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
+                ];
+                await writeData(SLIDER_FILE, initialSlider);
+                console.log('[Init] Created initial slider data');
+            }
+        } else {
+            // For Redis, check if slider key exists
+            const existingSlider = await redis.get('slider');
+            if (!existingSlider) {
+                const initialSlider = [
+                    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
+                    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
+                ];
+                await redis.set('slider', initialSlider);
+                console.log('[Init] Created initial slider data in Redis');
+            }
+        }
+    } catch (error) {
+        console.warn('[Init] Could not initialize slider data:', error.message);
     }
-} catch (error) {
-    console.warn('[Init] Could not initialize slider data:', error.message);
-}
+})();
 
 // Initialize Club Settings if not exists
-try {
-    if (!fs.existsSync(CLUB_FILE)) {
-        const initialClub = {
-            name: 'AMSAL FC',
-            address: '',
-            groundLocation: '',
-            groundSize: '',
-            fieldType: 'Natural Grass',
-            groundImageUrl: ''
-        };
-        writeData(CLUB_FILE, initialClub);
-        console.log('[Init] Created initial club data');
+(async () => {
+    try {
+        if (!redis) {
+            // Only initialize if using file-based storage (local development)
+            if (!fs.existsSync(CLUB_FILE)) {
+                const initialClub = {
+                    name: 'AMSAL FC',
+                    address: '',
+                    groundLocation: '',
+                    groundSize: '',
+                    fieldType: 'Natural Grass',
+                    groundImageUrl: ''
+                };
+                await writeData(CLUB_FILE, initialClub);
+                console.log('[Init] Created initial club data');
+            }
+        } else {
+            // For Redis, check if club key exists
+            const existingClub = await redis.get('club');
+            if (!existingClub) {
+                const initialClub = {
+                    name: 'AMSAL FC',
+                    address: '',
+                    groundLocation: '',
+                    groundSize: '',
+                    fieldType: 'Natural Grass',
+                    groundImageUrl: ''
+                };
+                await redis.set('club', initialClub);
+                console.log('[Init] Created initial club data in Redis');
+            }
+        }
+    } catch (error) {
+        console.warn('[Init] Could not initialize club data:', error.message);
     }
-} catch (error) {
-    console.warn('[Init] Could not initialize club data:', error.message);
-}
+})();
 
 // --- FILE UPLOAD ROUTES ---
 
@@ -193,9 +295,9 @@ app.post('/api/upload/admin', upload.single('image'), (req, res) => {
 // --- CLUB SETTINGS ROUTES ---
 
 // Get club settings
-app.get('/api/club', (req, res) => {
+app.get('/api/club', async (req, res) => {
     try {
-        const club = readData(CLUB_FILE);
+        const club = await readData(CLUB_FILE);
         res.json(club);
     } catch (error) {
         console.error('Error fetching club settings:', error);
@@ -204,7 +306,7 @@ app.get('/api/club', (req, res) => {
 });
 
 // Update club settings
-app.put('/api/club', (req, res) => {
+app.put('/api/club', async (req, res) => {
     try {
         const { name, address, groundLocation, groundSize, fieldType, groundImageUrl, stadiumCapacity, nightlight } = req.body;
         const clubData = {
@@ -217,7 +319,7 @@ app.put('/api/club', (req, res) => {
             nightlight: nightlight || 'No',
             groundImageUrl: groundImageUrl || ''
         };
-        writeData(CLUB_FILE, clubData);
+        await writeData(CLUB_FILE, clubData);
 
         // Real-time emission
         io.emit('club-updated', clubData);
@@ -232,9 +334,9 @@ app.put('/api/club', (req, res) => {
 // --- MEMBER ROUTES ---
 
 // Get all members
-app.get('/api/members', (req, res) => {
+app.get('/api/members', async (req, res) => {
     try {
-        const members = readData(MEMBERS_FILE);
+        const members = await readData(MEMBERS_FILE);
         // Sort by jersey number if available, then by name
         const sortedMembers = members.sort((a, b) => {
             if (a.jerseyNo && b.jerseyNo) {
@@ -252,19 +354,19 @@ app.get('/api/members', (req, res) => {
 });
 
 // Alias for squad
-app.get('/api/squad', (req, res) => {
-    const members = readData(MEMBERS_FILE);
+app.get('/api/squad', async (req, res) => {
+    const members = await readData(MEMBERS_FILE);
     res.json(members);
 });
 
 // Alias for ground (club data)
-app.get('/api/ground', (req, res) => {
-    const club = readData(CLUB_FILE);
+app.get('/api/ground', async (req, res) => {
+    const club = await readData(CLUB_FILE);
     res.json(club);
 });
 
 // Add a new member with enhanced fields
-app.post('/api/members', (req, res) => {
+app.post('/api/members', async (req, res) => {
     try {
         const {
             name, memberType, positions, jerseyNo, age, address, height,
@@ -279,7 +381,7 @@ app.post('/api/members', (req, res) => {
             return res.status(400).json({ error: 'At least one position is required' });
         }
 
-        const members = readData(MEMBERS_FILE);
+        const members = await readData(MEMBERS_FILE);
 
         // Check for duplicate jersey numbers (if provided)
         if (jerseyNo) {
@@ -305,11 +407,11 @@ app.post('/api/members', (req, res) => {
         };
 
         members.push(newMember);
-        writeData(MEMBERS_FILE, members);
-        
+        await writeData(MEMBERS_FILE, members);
+
         // Emit real-time update
         io.emit('member-added', newMember);
-        
+
         res.status(201).json(newMember);
     } catch (error) {
         console.error('Error adding member:', error);
@@ -318,7 +420,7 @@ app.post('/api/members', (req, res) => {
 });
 
 // Update a member
-app.put('/api/members/:id', (req, res) => {
+app.put('/api/members/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const {
@@ -326,7 +428,7 @@ app.put('/api/members/:id', (req, res) => {
             preferredFoot, imageUrl, status, notes
         } = req.body;
 
-        const members = readData(MEMBERS_FILE);
+        const members = await readData(MEMBERS_FILE);
         const memberIndex = members.findIndex(m => String(m.id) === String(id));
 
         if (memberIndex === -1) {
@@ -356,11 +458,11 @@ app.put('/api/members/:id', (req, res) => {
             notes: notes !== undefined ? notes : members[memberIndex].notes
         };
 
-        writeData(MEMBERS_FILE, members);
-        
+        await writeData(MEMBERS_FILE, members);
+
         // Emit real-time update
         io.emit('member-updated', members[memberIndex]);
-        
+
         res.json(members[memberIndex]);
     } catch (error) {
         console.error('Error updating member:', error);
@@ -369,10 +471,10 @@ app.put('/api/members/:id', (req, res) => {
 });
 
 // Delete a member
-app.delete('/api/members/:id', (req, res) => {
+app.delete('/api/members/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        let members = readData(MEMBERS_FILE);
+        let members = await readData(MEMBERS_FILE);
         const initialLength = members.length;
         const deletedMember = members.find(m => String(m.id) === String(id));
 
@@ -382,11 +484,11 @@ app.delete('/api/members/:id', (req, res) => {
             return res.status(404).json({ error: 'Member not found' });
         }
 
-        writeData(MEMBERS_FILE, members);
-        
+        await writeData(MEMBERS_FILE, members);
+
         // Emit real-time update
         io.emit('member-deleted', { id });
-        
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting member:', error);
@@ -397,9 +499,9 @@ app.delete('/api/members/:id', (req, res) => {
 // --- NEWS ROUTES ---
 
 // Get all news
-app.get('/api/news', (req, res) => {
+app.get('/api/news', async (req, res) => {
     try {
-        const news = readData(NEWS_FILE);
+        const news = await readData(NEWS_FILE);
         // Sort by newest first (by date)
         const sortedNews = news.sort((a, b) => {
             const dateA = new Date(a.date || a.dateFormatted || 0);
@@ -414,14 +516,14 @@ app.get('/api/news', (req, res) => {
 });
 
 // Post news with publisher info & type
-app.post('/api/news', (req, res) => {
+app.post('/api/news', async (req, res) => {
     try {
         const { headline, description, publisher, imageUrl, type } = req.body;
         if (!headline || !description) {
             return res.status(400).json({ error: 'Headline and Description required' });
         }
 
-        const newsList = readData(NEWS_FILE);
+        const newsList = await readData(NEWS_FILE);
         const now = new Date();
         const newNews = {
             id: Date.now().toString(),
@@ -439,7 +541,7 @@ app.post('/api/news', (req, res) => {
         };
 
         newsList.push(newNews);
-        writeData(NEWS_FILE, newsList);
+        await writeData(NEWS_FILE, newsList);
 
         // Real-time emission
         io.emit('new-news', newNews);
@@ -452,12 +554,12 @@ app.post('/api/news', (req, res) => {
 });
 
 // Update news (Edit)
-app.put('/api/news/:id', (req, res) => {
+app.put('/api/news/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { headline, description, type, imageUrl } = req.body;
 
-        const newsList = readData(NEWS_FILE);
+        const newsList = await readData(NEWS_FILE);
         const newsIndex = newsList.findIndex(n => String(n.id) === String(id));
 
         if (newsIndex === -1) {
@@ -472,7 +574,7 @@ app.put('/api/news/:id', (req, res) => {
             imageUrl: imageUrl !== undefined ? imageUrl : newsList[newsIndex].imageUrl
         };
 
-        writeData(NEWS_FILE, newsList);
+        await writeData(NEWS_FILE, newsList);
 
         // Emit real-time update
         io.emit('update-news', newsList[newsIndex]);
@@ -485,10 +587,10 @@ app.put('/api/news/:id', (req, res) => {
 });
 
 // Delete news
-app.delete('/api/news/:id', (req, res) => {
+app.delete('/api/news/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        let newsList = readData(NEWS_FILE);
+        let newsList = await readData(NEWS_FILE);
         const initialLength = newsList.length;
 
         newsList = newsList.filter(n => String(n.id) !== String(id));
@@ -497,11 +599,11 @@ app.delete('/api/news/:id', (req, res) => {
             return res.status(404).json({ error: 'News item not found' });
         }
 
-        writeData(NEWS_FILE, newsList);
-        
+        await writeData(NEWS_FILE, newsList);
+
         // Emit real-time update
         io.emit('news-deleted', { id });
-        
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting news:', error);
@@ -512,9 +614,9 @@ app.delete('/api/news/:id', (req, res) => {
 // --- SLIDER ROUTES ---
 
 // Get all slider images
-app.get('/api/slider', (req, res) => {
+app.get('/api/slider', async (req, res) => {
     try {
-        const slides = readData(SLIDER_FILE);
+        const slides = await readData(SLIDER_FILE);
         // Filter to only active slides
         const activeSlides = slides.filter(s => s.active !== false);
         res.json(activeSlides);
@@ -525,17 +627,17 @@ app.get('/api/slider', (req, res) => {
 });
 
 // Update slider (save all)
-app.post('/api/slider', (req, res) => {
+app.post('/api/slider', async (req, res) => {
     try {
         const slides = req.body;
         if (!Array.isArray(slides)) {
             return res.status(400).json({ error: 'Slides must be an array' });
         }
-        writeData(SLIDER_FILE, slides);
-        
+        await writeData(SLIDER_FILE, slides);
+
         // Emit real-time update
         io.emit('slider-updated', slides);
-        
+
         res.json({ success: true, slides });
     } catch (error) {
         console.error('Error updating slider:', error);
@@ -560,17 +662,17 @@ app.post('/api/upload/slider', upload.single('image'), (req, res) => {
 // --- ADMIN ROUTES ---
 
 // Admin Login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        
+
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        const admins = readData(ADMINS_FILE);
-        const admin = admins.find(a => 
-            a.username.toLowerCase() === username.toLowerCase().trim() && 
+        const admins = await readData(ADMINS_FILE);
+        const admin = admins.find(a =>
+            a.username.toLowerCase() === username.toLowerCase().trim() &&
             a.password === password
         );
 
@@ -591,9 +693,9 @@ app.post('/api/login', (req, res) => {
 });
 
 // Get Admins
-app.get('/api/admins', (req, res) => {
+app.get('/api/admins', async (req, res) => {
     try {
-        const admins = readData(ADMINS_FILE);
+        const admins = await readData(ADMINS_FILE);
         // Return admins without passwords for security
         const safeAdmins = admins.map(({ password, ...rest }) => rest);
         // Sort by role (super admins first), then by username
@@ -610,7 +712,7 @@ app.get('/api/admins', (req, res) => {
 });
 
 // Add Admin
-app.post('/api/admins', (req, res) => {
+app.post('/api/admins', async (req, res) => {
     try {
         const { username, password, imageUrl } = req.body;
         if (!username || !password) {
@@ -625,7 +727,7 @@ app.post('/api/admins', (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 4 characters' });
         }
 
-        const admins = readData(ADMINS_FILE);
+        const admins = await readData(ADMINS_FILE);
         if (admins.find(a => a.username.toLowerCase() === username.toLowerCase().trim())) {
             return res.status(400).json({ error: 'Username already taken' });
         }
@@ -638,7 +740,7 @@ app.post('/api/admins', (req, res) => {
             imageUrl: imageUrl || ''
         };
         admins.push(newAdmin);
-        writeData(ADMINS_FILE, admins);
+        await writeData(ADMINS_FILE, admins);
 
         const { password: _, ...safeAdmin } = newAdmin;
         res.status(201).json(safeAdmin);
@@ -649,12 +751,12 @@ app.post('/api/admins', (req, res) => {
 });
 
 // Update Admin
-app.put('/api/admins/:id', (req, res) => {
+app.put('/api/admins/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { username, password, imageUrl } = req.body;
 
-        const admins = readData(ADMINS_FILE);
+        const admins = await readData(ADMINS_FILE);
         const adminIndex = admins.findIndex(a => String(a.id) === String(id));
 
         if (adminIndex === -1) {
@@ -681,7 +783,7 @@ app.put('/api/admins/:id', (req, res) => {
             imageUrl: imageUrl !== undefined ? imageUrl : admins[adminIndex].imageUrl
         };
 
-        writeData(ADMINS_FILE, admins);
+        await writeData(ADMINS_FILE, admins);
 
         const { password: _, ...safeAdmin } = admins[adminIndex];
         res.json(safeAdmin);
@@ -692,9 +794,9 @@ app.put('/api/admins/:id', (req, res) => {
 });
 
 // Delete Admin
-app.delete('/api/admins/:id', (req, res) => {
+app.delete('/api/admins/:id', async (req, res) => {
     try {
-        let admins = readData(ADMINS_FILE);
+        let admins = await readData(ADMINS_FILE);
         const adminToDelete = admins.find(a => String(a.id) === String(req.params.id));
 
         if (!adminToDelete) {
@@ -706,11 +808,11 @@ app.delete('/api/admins/:id', (req, res) => {
         }
 
         admins = admins.filter(a => String(a.id) !== String(req.params.id));
-        writeData(ADMINS_FILE, admins);
-        
+        await writeData(ADMINS_FILE, admins);
+
         // Emit real-time update
         io.emit('admin-deleted', { id: req.params.id });
-        
+
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting admin:', error);
