@@ -209,6 +209,103 @@ app.get('/api/export-database', async (req, res) => {
     }
 });
 
+// Bomb Database endpoint - SUPER ADMIN ONLY - wipes all data clean (except super admin)
+app.post('/api/bomb-database', async (req, res) => {
+    try {
+        console.log('[Bomb Database] Starting database wipe operation...');
+
+        // Check if user is authenticated as super admin
+        const adminRole = req.headers['x-admin-role'];
+        const adminUsername = req.headers['x-admin-username'];
+
+        if (adminRole !== 'super') {
+            console.log('[Bomb Database] ❌ Access denied - not a super admin');
+            return res.status(403).json({
+                success: false,
+                error: 'Access denied. Super admin privileges required.'
+            });
+        }
+
+        console.log(`[Bomb Database] ✅ Super admin ${adminUsername} authorized for database wipe`);
+
+        // Get current admins to preserve the super admin
+        const currentAdmins = await readData(ADMINS_FILE);
+        const superAdmin = currentAdmins.find(admin => admin.role === 'super');
+
+        if (!superAdmin) {
+            console.log('[Bomb Database] ❌ No super admin found - aborting');
+            return res.status(500).json({
+                success: false,
+                error: 'No super admin account found. Cannot proceed with database wipe.'
+            });
+        }
+
+        // Reset all data to initial state
+
+        // 1. Reset Members (empty array)
+        await writeData(MEMBERS_FILE, []);
+        console.log('[Bomb Database] ✅ Members data wiped');
+
+        // 2. Reset News (empty array)
+        await writeData(NEWS_FILE, []);
+        console.log('[Bomb Database] ✅ News data wiped');
+
+        // 3. Reset Admins (keep only super admin)
+        await writeData(ADMINS_FILE, [superAdmin]);
+        console.log('[Bomb Database] ✅ Admin accounts wiped (super admin preserved)');
+
+        // 4. Reset Slider to initial state
+        const initialSlider = [
+            { id: '1', imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200', active: true },
+            { id: '2', imageUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?q=80&w=1200', active: true }
+        ];
+        await writeData(SLIDER_FILE, initialSlider);
+        console.log('[Bomb Database] ✅ Slider reset to initial state');
+
+        // 5. Reset Club to initial state
+        const initialClub = {
+            name: 'AMSAL FC',
+            address: '',
+            groundLocation: '',
+            groundSize: '',
+            fieldType: 'Natural Grass',
+            groundImageUrl: ''
+        };
+        await writeData(CLUB_FILE, initialClub);
+        console.log('[Bomb Database] ✅ Club data reset to initial state');
+
+        // Emit real-time updates to connected clients
+        io.emit('database-bombed', {
+            timestamp: new Date().toISOString(),
+            admin: adminUsername,
+            message: 'Database has been completely wiped and reset'
+        });
+
+        console.log(`[Bomb Database] ✅ Database wipe completed successfully by super admin ${adminUsername}`);
+
+        res.json({
+            success: true,
+            message: 'Database has been completely wiped and reset to initial state.',
+            preserved: {
+                superAdmin: {
+                    id: superAdmin.id,
+                    username: superAdmin.username,
+                    role: superAdmin.role
+                }
+            },
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[Bomb Database] ❌ Database wipe failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database wipe operation failed',
+            details: error.message
+        });
+    }
+});
+
 // Serve index.html as default
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -1076,6 +1173,36 @@ app.post('/api/login', async (req, res) => {
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ error: 'Login failed. Please try again.' });
+    }
+});
+
+// Verify Super Admin Password (for bomb database authorization)
+app.post('/api/verify-super-admin', async (req, res) => {
+    try {
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+
+        const admins = await readData(ADMINS_FILE);
+        const superAdmin = admins.find(a => a.role === 'super');
+
+        if (!superAdmin) {
+            return res.status(500).json({ error: 'Super admin account not found' });
+        }
+
+        if (superAdmin.password === password) {
+            res.json({
+                success: true,
+                message: 'Super admin verification successful'
+            });
+        } else {
+            res.status(401).json({ error: 'Invalid super admin password' });
+        }
+    } catch (error) {
+        console.error('Error during super admin verification:', error);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
     }
 });
 

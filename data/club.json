@@ -1,10 +1,8 @@
 {
   "name": "AMSAL FC",
-  "address": "Chaudandigadhi-3",
-  "groundLocation": "MAVI Amsal",
-  "groundSize": "60x40m",
+  "address": "",
+  "groundLocation": "",
+  "groundSize": "",
   "fieldType": "Natural Grass",
-  "stadiumCapacity": "5000",
-  "nightlight": "No",
-  "groundImageUrl": "https://ichef.bbci.co.uk/ace/standard/2048/cpsprodpb/60fe/live/38ae3440-dc3a-11f0-b67b-690eb873de1b.jpg"
+  "groundImageUrl": ""
 }

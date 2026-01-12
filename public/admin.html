@@ -611,6 +611,39 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- System Management Card -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <div class="card-icon"><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i></div>
+                        <h2 class="card-title" style="color: #ef4444;">System Management</h2>
+                    </div>
+
+                    <div class="system-management-content">
+                        <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
+                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                            <strong>Danger Zone:</strong> These actions are irreversible and will permanently delete data.
+                        </p>
+
+                        <button type="button" id="bomb-database-btn" class="form-submit danger" style="background-color: #dc2626; border-color: #dc2626;">
+                            <i class="fas fa-bomb"></i> Bomb Database
+                        </button>
+
+                        <div class="bomb-database-info" style="margin-top: 1rem; padding: 1rem; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem;">
+                            <h4 style="color: #dc2626; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                                <i class="fas fa-info-circle"></i> What happens when you bomb the database?
+                            </h4>
+                            <ul style="color: #7f1d1d; margin: 0; padding-left: 1.2rem; font-size: 0.8rem; line-height: 1.4;">
+                                <li>All members will be deleted</li>
+                                <li>All news articles will be deleted</li>
+                                <li>All regular admin accounts will be deleted</li>
+                                <li>Slider images will be reset to defaults</li>
+                                <li>Club settings will be reset to defaults</li>
+                                <li><strong>Super admin account will be preserved</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -684,6 +717,154 @@
 
     <!-- Scripts -->
     <script src="client.js"></script>
+    <script>
+        // Bomb Database functionality
+        document.getElementById('bomb-database-btn')?.addEventListener('click', async () => {
+            const adminRole = sessionStorage.getItem('amsal_admin_role');
+            const adminData = JSON.parse(sessionStorage.getItem('amsal_admin_data') || '{}');
+
+            // If user is already super admin, proceed directly
+            if (adminRole === 'super') {
+                showBombConfirmation();
+                return;
+            }
+
+            // If user is not super admin, show password prompt
+            showSuperAdminPasswordPrompt();
+        });
+
+        function showSuperAdminPasswordPrompt() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = 'super-admin-modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 450px;">
+                    <div class="modal-close" onclick="this.parentElement.parentElement.remove()">&times;</div>
+                    <div class="modal-header">
+                        <i class="fas fa-shield-alt" style="color: #ef4444; font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <h2 style="color: #ef4444;">Super Admin Verification</h2>
+                        <p>This action requires super admin privileges. Please enter the super admin password to continue.</p>
+                    </div>
+                    <form id="super-admin-form" style="padding: 1.5rem 0;">
+                        <div class="form-group">
+                            <label class="form-label" for="super-admin-password">
+                                <i class="fas fa-lock"></i> Super Admin Password
+                            </label>
+                            <input type="password" id="super-admin-password" class="form-input" placeholder="Enter super admin password" required autofocus>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                            <button type="button" onclick="this.closest('.modal').remove()" class="form-submit" style="flex: 1;">
+                                Cancel
+                            </button>
+                            <button type="submit" class="form-submit danger" style="flex: 1; background-color: #dc2626; border-color: #dc2626;">
+                                Verify & Continue
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            modal.classList.add('active');
+
+            // Handle form submission
+            document.getElementById('super-admin-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const password = document.getElementById('super-admin-password').value;
+
+                try {
+                    const response = await fetch('/api/verify-super-admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        modal.remove();
+                        showBombConfirmation();
+                    } else {
+                        showToast('Verification Failed', 'Incorrect super admin password', 'error');
+                        document.getElementById('super-admin-password').focus();
+                    }
+                } catch (error) {
+                    console.error('Verification error:', error);
+                    showToast('Error', 'Failed to verify super admin password', 'error');
+                }
+            });
+        }
+
+        function showBombConfirmation() {
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmTitle = document.getElementById('confirm-title');
+            const confirmMessage = document.getElementById('confirm-message');
+            const confirmProceed = document.getElementById('confirm-proceed');
+            const confirmCancel = document.getElementById('confirm-cancel');
+
+            // Set confirmation modal content
+            confirmTitle.textContent = 'Bomb Database - DANGER!';
+            confirmMessage.innerHTML = `
+                <strong>This action is IRREVERSIBLE!</strong><br><br>
+                Are you absolutely sure you want to bomb the database?<br><br>
+                This will permanently delete:<br>
+                • All members<br>
+                • All news articles<br>
+                • All regular admin accounts<br>
+                • Reset all settings to defaults<br><br>
+                <em>Only the super admin account will be preserved.</em>
+            `;
+
+            // Set button text
+            confirmCancel.textContent = 'Cancel';
+            confirmProceed.textContent = 'Yes, Bomb Database';
+
+            // Remove previous event listeners
+            const newConfirmProceed = confirmProceed.cloneNode(true);
+            confirmProceed.parentNode.replaceChild(newConfirmProceed, confirmProceed);
+
+            // Add new event listener for bombing database
+            newConfirmProceed.addEventListener('click', async () => {
+                try {
+                    // Close modal
+                    confirmModal.classList.remove('active');
+
+                    // Show loading message
+                    showToast('Database Operation', 'Bombing database...', 'info');
+
+                    // Make API call
+                    const response = await fetch('/api/bomb-database', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-admin-role': sessionStorage.getItem('amsal_admin_role'),
+                            'x-admin-username': JSON.parse(sessionStorage.getItem('amsal_admin_data') || '{}').username
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showToast('Database Operation', 'Database successfully bombed! All data has been wiped.', 'success');
+
+                        // Reload the page after a short delay to show updated state
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        showToast('Database Operation Failed', `Failed to bomb database: ${result.error}`, 'error');
+                    }
+
+                } catch (error) {
+                    console.error('Bomb database error:', error);
+                    showToast('Database Operation Failed', 'Failed to bomb database. Please try again.', 'error');
+                }
+            });
+
+            // Show modal
+            confirmModal.classList.add('active');
+        }
+    </script>
 </body>
 
 </html>
