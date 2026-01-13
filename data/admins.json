@@ -5,12 +5,5 @@
     "password": "79263002",
     "role": "super",
     "imageUrl": "/uploads/1768059824717-831215467.png"
-  },
-  {
-    "id": "1768325826986",
-    "username": "test",
-    "password": "1111",
-    "role": "admin",
-    "imageUrl": "/uploads/1768325843113-749213893.jpg"
   }
 ]
