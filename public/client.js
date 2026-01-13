@@ -2854,7 +2854,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Determine status for each match and sort
+            // Determine status for each match
             const now = new Date();
             matches = matches.map(match => {
                 const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
@@ -2870,27 +2870,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { ...match, isLive, isUpcoming, isFinished, matchDateTime };
             });
 
-            // Sort: Live first, then Upcoming (nearest first), then Finished (most recent first)
-            matches.sort((a, b) => {
-                // Primary sort: Live first
-                if (a.isLive && !b.isLive) return -1;
-                if (!a.isLive && b.isLive) return 1;
-
-                // Then Upcoming (nearest match first)
-                if (a.isUpcoming && !b.isUpcoming) return -1;
-                if (!a.isUpcoming && b.isUpcoming) return 1;
-                if (a.isUpcoming && b.isUpcoming) return a.matchDateTime - b.matchDateTime;
-
-                // Then Finished (most recent first)
-                if (a.isFinished && b.isFinished) return b.matchDateTime - a.matchDateTime;
-
-                return b.matchDateTime - a.matchDateTime;
-            });
+            // Sort: Chronological (Oldest to Newest) for Timeline View
+            // This naturally places Completed (past) -> Live (now) -> Upcoming (future)
+            matches.sort((a, b) => a.matchDateTime - b.matchDateTime);
 
             featuredMatchEl.innerHTML = matches.map(match => {
                 const isLive = match.isLive;
                 const isFinished = match.isFinished;
-                // const isUpcoming = match.isUpcoming; // Already available from match object
 
                 let statusClass = 'match-scheduled';
                 let statusText = 'Scheduled';
@@ -2914,69 +2900,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const matchDateFormatted = new Date(match.matchDate).toLocaleDateString('en-US', {
                     weekday: 'short',
-                    year: 'numeric',
                     month: 'short',
                     day: 'numeric'
                 });
-                const matchTimeFormatted = new Date(`1970-01-01T${match.matchTime}`).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+
+                // Add ID to live match for auto-scrolling
+                const cardIdAttr = isLive ? 'id="live-match-card"' : (match.isUpcoming ? 'class="match-card upcoming-match-card"' : 'class="match-card"');
 
                 return `
-                    <div class="match-card ${isLive ? 'live-card' : ''} ${match.isFinished ? 'finished-card' : ''} ${match.isUpcoming ? 'upcoming-card' : ''}" 
-                         id="match-card-${match.id}" 
-                         onclick="window.openMatchDetailsModal('${match.id}')">
-                        <div class="match-header">
-                            <div class="competition-name">${match.competition || 'Friendly'}</div>
-                            <div class="match-status ${statusClass}">${statusText}</div>
+                <div ${cardIdAttr.startsWith('id') ? 'id="live-match-card" class="match-card live-card"' : cardIdAttr} onclick="window.openMatchDetailsModal('${match.id}')">
+                    <div class="match-header">
+                        <div class="competition-name">${match.competition || 'Friendly Match'}</div>
+                        <div class="match-status ${statusClass}">${statusText}</div>
+                    </div>
+                    
+                    <div class="match-content">
+                        <div class="team">
+                            <img src="${match.homeAway === 'home' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/53/53283.png'" class="team-logo">
+                            <div class="team-name">${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</div>
                         </div>
-                        <div class="match-content">
-                            <div class="team">
-                                <img src="${match.homeAway === 'home' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
-                                     alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}" 
-                                     class="team-logo">
-                                <div class="team-name">${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</div>
-                            </div>
-                            <div class="match-vs">
-                                ${isFinished || isLive ?
-                        `<div class="score-display">
-                                        ${match.teamScore !== null ? match.teamScore : 0}
-                                        <span class="score-divider">-</span>
-                                        ${match.opponentScore !== null ? match.opponentScore : 0}
-                                    </div>` :
-                        `<div class="vs-badge">VS</div>
-                                     <div class="match-time-display">${matchTimeFormatted}</div>`
-                    }
-                            </div>
-                            <div class="team">
-                                <img src="${match.homeAway === 'away' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
-                                     alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}" 
-                                     class="team-logo">
-                                <div class="team-name">${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</div>
-                            </div>
+                        
+                        <div class="match-vs">
+                             ${(isFinished || isLive) && match.teamScore !== null ? `
+                                <div class="score-display">
+                                    ${match.teamScore} <span class="score-divider">-</span> ${match.opponentScore}
+                                </div>
+                             ` : `
+                                <div class="vs-badge">VS</div>
+                                <div class="match-time-display">${match.matchTime}</div>
+                             `}
                         </div>
-                        <div class="match-footer">
-                            <div class="match-info-item">
-                                <i class="fas fa-calendar"></i> ${matchDateFormatted}
-                            </div>
-                            <div class="match-info-item">
-                                <i class="fas fa-map-marker-alt"></i> ${match.venue || 'TBA'}
-                            </div>
+                        
+                        <div class="team">
+                            <img src="${match.homeAway === 'away' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/53/53283.png'" class="team-logo">
+                            <div class="team-name">${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</div>
                         </div>
                     </div>
-                `;
+                    
+                    <div class="match-footer">
+                        <div class="match-info-item">
+                            <i class="fas fa-calendar"></i> ${matchDateFormatted}
+                        </div>
+                        <div class="match-info-item">
+                            <i class="fas fa-map-marker-alt"></i> ${match.venue || 'TBA'}
+                        </div>
+                    </div>
+                </div>
+            `;
             }).join('');
 
             // Scroll helper
-            const scrollToMatch = (matchId) => {
-                const card = document.getElementById(`match-card-${matchId}`);
-                if (card) {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            const scrollToMatch = (element) => {
+                if (element && featuredMatchEl) {
+                    const containerWidth = featuredMatchEl.offsetWidth;
+                    const cardLeft = element.offsetLeft;
+                    const cardWidth = element.offsetWidth;
+
+                    // Center the card
+                    const scrollPos = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+
+                    featuredMatchEl.scrollTo({
+                        left: scrollPos,
+                        behavior: 'smooth'
+                    });
                 }
             };
 
-            // Setup Navigation
+            // AUTO-SCROLL LOGIC: Center the Live match or first Upcoming match
+            setTimeout(() => {
+                const liveCard = document.getElementById('live-match-card');
+                const firstUpcoming = document.querySelector('.upcoming-match-card');
+
+                let targetCard = liveCard || firstUpcoming;
+
+                // If only finished matches, scroll to the last one (most recent)
+                if (!targetCard) {
+                    const allCards = featuredMatchEl.querySelectorAll('.match-card');
+                    if (allCards.length > 0) targetCard = allCards[allCards.length - 1];
+                }
+
+                if (targetCard) scrollToMatch(targetCard);
+            }, 500);
+
+            // Setup Navigation Buttons
             const prevBtn = document.getElementById('match-scroll-prev');
             const nextBtn = document.getElementById('match-scroll-next');
 
@@ -2991,12 +2997,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (jumpBtn) {
                 jumpBtn.onclick = () => {
                     // Jump to live or nearest upcoming
-                    const targetMatch = matches.find(m => m.isLive) || matches.find(m => m.isUpcoming) || matches[matches.length - 1];
-                    if (targetMatch) scrollToMatch(targetMatch.id);
+                    const liveCard = document.getElementById('live-match-card');
+                    const firstUpcoming = document.querySelector('.upcoming-match-card');
+                    const target = liveCard || firstUpcoming;
+                    if (target) scrollToMatch(target);
                 };
             }
 
-            // Auto-scroll removed as requested
         } catch (error) {
             console.error('Error fetching matches:', error);
             featuredMatchEl.innerHTML = '<p class="error">Failed to load matches.</p>';
@@ -3041,11 +3048,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (matches.length === 0) {
                 allMatchesGrid.innerHTML = `
-                    <div class="no-matches">
+            < div class= "no-matches" >
                         <i class="fas fa-calendar-times"></i>
                         <h3>No Matches Found</h3>
                         <p>No match fixtures have been scheduled yet.</p>
-                    </div>
+                    </div >
                 `;
                 return;
             }
@@ -3086,15 +3093,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Build score display
                 let scoreDisplay = '';
                 if (match.matchStatus === 'completed' && match.teamScore !== null && match.opponentScore !== null) {
-                    scoreDisplay = `<span class="match-result">${match.teamScore} - ${match.opponentScore}</span>`;
+                    scoreDisplay = `< span class= "match-result" > ${match.teamScore} - ${match.opponentScore}</span > `;
                 } else if (match.matchStatus === 'live') {
-                    scoreDisplay = `<span class="match-result live">${match.teamScore || 0} - ${match.opponentScore || 0}</span>`;
+                    scoreDisplay = `< span class= "match-result live" > ${match.teamScore || 0} - ${match.opponentScore || 0}</span > `;
                 } else {
-                    scoreDisplay = `<span class="match-time">${matchTime}</span>`;
+                    scoreDisplay = `< span class= "match-time" > ${matchTime}</span > `;
                 }
 
                 return `
-                    <div class="match-item ${statusClass}">
+            < div class= "match-item ${statusClass}" >
                         <div class="match-item-header">
                             <span class="match-item-status">${statusText}</span>
                             <span class="match-item-competition">${match.competition || 'Friendly'}</span>
@@ -3112,18 +3119,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="match-item-date">${matchDate}</span>
                             <span class="match-item-venue">${match.venue}</span>
                         </div>
-                    </div>
+                    </div >
                 `;
             }).join('');
 
         } catch (error) {
             console.error('Error fetching all matches:', error);
             allMatchesGrid.innerHTML = `
-                <div class="matches-error">
+                < div class= "matches-error" >
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>Unable to load matches</p>
-                </div>
-            `;
+                </div >
+                `;
         }
     }
 
@@ -3320,7 +3327,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const scoreDisplay = showScoreline ? `${teamScoreVal} - ${opponentScoreVal}` : 'VS';
 
             modalBody.innerHTML = `
-                <div class="match-detail-header">
+            < div class= "match-detail-header" >
                     <div class="competition-name">${match.competition || 'Friendly Match'}</div>
                     <div class="match-detail-teams">
                         <div class="match-detail-team">
@@ -3336,7 +3343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="team-name" style="color: var(--primary-900) !important; font-weight: 700;">${awayTeam}</div>
                         </div>
                     </div>
-                </div>
+                </div >
                 <div class="match-detail-body">
                     <div class="detail-row">
                         <i class="fas fa-info-circle"></i>
