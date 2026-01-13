@@ -95,7 +95,8 @@ const upload = multer({
 });
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve logo.png from both root and public directory
@@ -1069,6 +1070,7 @@ app.delete('/api/news/:id', async (req, res) => {
 // Get all matches
 app.get('/api/matches', async (req, res) => {
     try {
+        await autoCompleteMatches(); // Ensure status is up-to-date
         const matches = await readData(MATCHES_FILE);
         // Sort by match date (upcoming first, then recent)
         const sortedMatches = matches.sort((a, b) => {
@@ -1267,9 +1269,56 @@ app.delete('/api/matches/:id', async (req, res) => {
     }
 });
 
+// --- MATCH AUTO-COMPLETION JOB ---
+/**
+ * Automatically set match status to 'completed' if 3 hours have passed since the match start time.
+ */
+const autoCompleteMatches = async () => {
+    try {
+        console.log('[Status Job] Checking for matches to auto-complete...');
+        const matches = await readData(MATCHES_FILE);
+        const now = new Date();
+        const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+        let changed = false;
+
+        const updatedMatches = matches.map(match => {
+            // Only auto-complete if NOT already completed, cancelled, or postponed
+            if (match.matchStatus !== 'completed' && match.matchStatus !== 'cancelled' && match.matchStatus !== 'postponed') {
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+
+                // If the date is valid and we've surpassed the 3-hour mark from start time
+                if (!isNaN(matchDateTime.getTime()) && now.getTime() > (matchDateTime.getTime() + THREE_HOURS_MS)) {
+                    console.log(`[Status Job] ✅ Auto-completing match: ${match.opponent} (Started: ${match.matchDate} ${match.matchTime})`);
+                    changed = true;
+                    const updated = {
+                        ...match,
+                        matchStatus: 'completed',
+                        updatedAt: now.toISOString()
+                    };
+                    // Notify clients in real-time
+                    io.emit('match-updated', updated);
+                    return updated;
+                }
+            }
+            return match;
+        });
+
+        if (changed) {
+            await writeData(MATCHES_FILE, updatedMatches);
+        }
+    } catch (error) {
+        console.error('[Status Job] ❌ Error in autoCompleteMatches:', error.message);
+    }
+};
+
+// Check every 5 minutes
+setInterval(autoCompleteMatches, 5 * 60 * 1000);
+// Also run immediately on startup
+setTimeout(autoCompleteMatches, 5000);
+
 // --- SLIDER ROUTES ---
 
-// Get all slider images
+// Get only active slider images (for public site)
 app.get('/api/slider', async (req, res) => {
     try {
         const slides = await readData(SLIDER_FILE);
@@ -1279,6 +1328,17 @@ app.get('/api/slider', async (req, res) => {
     } catch (error) {
         console.error('Error fetching slider:', error);
         res.status(500).json({ error: 'Failed to fetch slider images' });
+    }
+});
+
+// Get ALL slider images (for admin panel)
+app.get('/api/slider/all', async (req, res) => {
+    try {
+        const slides = await readData(SLIDER_FILE);
+        res.json(slides);
+    } catch (error) {
+        console.error('Error fetching all slides:', error);
+        res.status(500).json({ error: 'Failed to fetch all slider images' });
     }
 });
 

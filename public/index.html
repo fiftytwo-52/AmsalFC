@@ -124,8 +124,8 @@
         </div>
 
         <div class="hero-content">
-           <h2 style="color: red;">!!Please refresh this page to see latest data!!</h2>
-           <p></p>
+            <h2 style="color: red;">!!Please refresh this page to see latest data!!</h2>
+            <p></p>
             <h4 style="color: rgb(5, 240, 76);"><i>*This page is still under construction and not official yet.<br>Some
                     errors may occur.</i></h4>
             <h1 style="color: white">FALL ONCE, RISE TWICE</h1>
@@ -141,18 +141,11 @@
                 </a>
             </div>
 
-            <div id="hero-clock" class="hero-clock">
-                <div id="clock-time">--:--:--</div>
-                <div id="clock-date">-- -- --</div>
-            </div>
-
             <!-- Hero Match Fixture (Added via JS) -->
             <div id="hero-match-display"></div>
         </div>
 
-        <div class="scroll-indicator">
-            <span></span>
-        </div>
+
     </header>
 
     <!-- News Section -->
@@ -178,32 +171,25 @@
             </div>
 
             <div class="match-center-container">
-                <div class="featured-match-card" id="featured-match">
-                    <!-- Featured match will be loaded here -->
+                <button class="scroll-nav prev" id="match-scroll-prev" aria-label="Previous Match">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+
+                <div class="featured-matches-scroll" id="featured-match">
+                    <!-- Matches will be loaded here -->
                     <div class="match-loading">
                         <i class="fas fa-spinner fa-spin"></i>
                         <p>Loading match information...</p>
                     </div>
                 </div>
 
-                <div class="match-actions">
-                    <button class="btn btn-secondary" id="view-all-matches-btn">
-                        <i class="fas fa-list"></i> All Matches
-                    </button>
-                </div>
-            </div>
+                <button class="scroll-nav next" id="match-scroll-next" aria-label="Next Match">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
 
-            <!-- Expanded matches view (hidden by default) -->
-            <div class="expanded-matches" id="expanded-matches" style="display: none;">
-                <div class="expanded-matches-header">
-                    <h3>All Matches</h3>
-                    <button class="btn btn-sm btn-outline" id="collapse-matches-btn">
-                        <i class="fas fa-chevron-up"></i> Collapse
-                    </button>
-                </div>
-                <div class="matches-grid" id="all-matches-grid">
-                    <!-- All matches will be loaded here -->
-                </div>
+                <button class="jump-to-today" id="jump-to-today" title="Jump to Today">
+                    <i class="fas fa-home"></i>
+                </button>
             </div>
         </div>
     </section>
@@ -256,7 +242,7 @@
                 <img id="ground-display-image" src="" alt="AMSAL FC Ground">
             </div>
 
-            <div class="ground-info-container" id="ground-info">
+            <div class="ground-info-container ground-grid" id="ground-info">
                 <!-- Ground information will be loaded here -->
                 <div class="ground-card">
                     <div class="ground-icon">
@@ -439,6 +425,18 @@
                     <p>QR Code Placeholder</p>
                     <p class="qr-note">QR code will be displayed here</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Detail Modal -->
+    <div id="match-detail-modal" class="modal">
+        <div class="modal-content match-detail-content">
+            <button class="modal-close" id="match-modal-close" aria-label="Close Match Details">
+                <i class="fas fa-times"></i>
+            </button>
+            <div id="match-modal-body">
+                <!-- Match details will be injected here -->
             </div>
         </div>
     </div>

@@ -1,20 +1,18 @@
 [
   {
-    "id": "1768303980954",
+    "id": "1768325660834",
     "name": "Pratik Shrestha",
     "memberType": "Player",
     "positions": [
-      "CB",
-      "LB",
-      "LWB"
+      "LB"
     ],
     "jerseyNo": "4",
-    "age": "14",
-    "address": "Amsal, Nepal",
-    "height": "170",
+    "age": "44",
+    "address": "Amsal",
+    "height": "176",
     "preferredFoot": "Right",
-    "imageUrl": "https://ui-avatars.com/api/?name=Player&background=4F46E5&color=FFFFFF&size=150",
+    "imageUrl": "/uploads/1768325921191-153508650.png",
     "status": "Active",
-    "notes": "test"
+    "notes": "playernote"
   }
 ]

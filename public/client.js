@@ -281,38 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // CLOCK
     // ============================================
 
-    function updateClock() {
-        const clockTime = document.getElementById('clock-time');
-        const clockDate = document.getElementById('clock-date');
-
-        if (!clockTime) return;
-
-        const now = new Date();
-
-        // Time
-        const timeString = now.toLocaleTimeString('en-US', {
-            hour12: true,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        clockTime.textContent = timeString;
-
-        // Date (e.g., Saturday, 10 Jan 2026)
-        if (clockDate) {
-            const dateString = now.toLocaleDateString('en-GB', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-            clockDate.textContent = dateString;
-        }
-    }
-
-    // Update every second immediately
-    setInterval(updateClock, 1000);
-    updateClock();
+    // Clock removed as requested
 
     // ============================================
     // HERO SLIDER (DYNAMIC)
@@ -1647,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function fetchSliderImages() {
             try {
-                const res = await fetch('/api/slider');
+                const res = await fetch('/api/slider/all');
                 const slides = await res.json();
 
                 if (slides.length === 0) {
@@ -1699,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         showToast('Warning', 'Using temporary image storage. Add Vercel Blob for real uploads.', 'warning');
                     }
 
-                    const res = await fetch('/api/slider');
+                    const res = await fetch('/api/slider/all');
                     const slides = await res.json();
 
                     slides.push({
@@ -1729,31 +1698,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.toggleSlide = async (id) => {
-            const res = await fetch('/api/slider');
-            const slides = await res.json();
-            const slide = slides.find(s => s.id === id);
-            if (slide) {
-                slide.active = !slide.active;
-                await fetch('/api/slider', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(slides)
-                });
-                await fetchSliderImages();
+            try {
+                const res = await fetch('/api/slider/all');
+                if (!res.ok) throw new Error('Failed to fetch slides');
+                const slides = await res.json();
+                const slide = slides.find(s => String(s.id) === String(id));
+                if (slide) {
+                    slide.active = !slide.active;
+                    const saveRes = await fetch('/api/slider', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(slides)
+                    });
+                    if (!saveRes.ok) throw new Error('Failed to save slides');
+                    showToast('Success', `Slide ${slide.active ? 'activated' : 'deactivated'}`, 'success');
+                    await fetchSliderImages();
+                } else {
+                    showToast('Error', 'Slide not found', 'error');
+                }
+            } catch (error) {
+                console.error('Toggle slide error:', error);
+                showToast('Error', error.message, 'error');
             }
         };
 
         window.deleteSlide = async (id) => {
-            if (!confirm('Remove this slide?')) return;
-            const res = await fetch('/api/slider');
-            const slides = await res.json();
-            const filtered = slides.filter(s => s.id !== id);
-            await fetch('/api/slider', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(filtered)
-            });
-            await fetchSliderImages();
+            if (!confirm('Remove this slide permanently?')) return;
+            try {
+                const res = await fetch('/api/slider/all');
+                if (!res.ok) throw new Error('Failed to fetch slides');
+                const slides = await res.json();
+                const filtered = slides.filter(s => String(s.id) !== String(id));
+                const saveRes = await fetch('/api/slider', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(filtered)
+                });
+                if (!saveRes.ok) throw new Error('Failed to save slides');
+                showToast('Success', 'Slide removed', 'success');
+                await fetchSliderImages();
+            } catch (error) {
+                console.error('Delete slide error:', error);
+                showToast('Error', error.message, 'error');
+            }
         };
     }
 
@@ -2603,6 +2590,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('m-notes').value = match.notes || '';
             document.getElementById('m-logo').value = match.opponentLogo || '';
 
+            // Update preview
+            const previewImg = document.getElementById('logo-preview-img');
+            const previewDiv = document.getElementById('logo-preview');
+            if (match.opponentLogo && previewImg && previewDiv) {
+                previewImg.src = match.opponentLogo;
+                previewDiv.style.display = 'block';
+            } else if (previewDiv) {
+                previewDiv.style.display = 'none';
+            }
+
             // Handle UI State
             const submitBtn = addMatchForm.querySelector('button[type="submit"]');
             submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Match';
@@ -2636,6 +2633,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     submitBtn.classList.remove('accent');
                     if (idField) idField.value = '';
                     cancelBtn.remove();
+                    const pDiv = document.getElementById('logo-preview');
+                    if (pDiv) pDiv.style.display = 'none';
                 };
             }
 
@@ -2650,21 +2649,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 const editIdInput = document.getElementById('match-edit-id');
                 const editId = editIdInput ? editIdInput.value : null;
 
-                const payload = {
-                    opponent: document.getElementById('m-opponent').value.trim(),
-                    homeAway: document.getElementById('m-home-away').value,
-                    matchDate: document.getElementById('m-date').value,
-                    matchTime: document.getElementById('m-time').value,
-                    venue: document.getElementById('m-venue').value.trim(),
-                    competition: document.getElementById('m-competition').value.trim(),
-                    matchStatus: document.getElementById('m-status').value,
-                    teamScore: document.getElementById('m-team-score').value,
-                    opponentScore: document.getElementById('m-opponent-score').value,
-                    notes: document.getElementById('m-notes').value.trim(),
-                    opponentLogo: document.getElementById('m-logo').value.trim()
-                };
+                let opponentLogo = document.getElementById('m-logo').value.trim();
+                const logoFile = document.getElementById('m-logo-file').files[0];
 
                 try {
+                    // Upload logo if a file is selected
+                    if (logoFile) {
+                        showToast('Uploading', 'Uploading opponent logo...', 'info');
+                        opponentLogo = await uploadImage(logoFile, 'match');
+                    }
+
+                    const payload = {
+                        opponent: document.getElementById('m-opponent').value.trim(),
+                        homeAway: document.getElementById('m-home-away').value,
+                        matchDate: document.getElementById('m-date').value,
+                        matchTime: document.getElementById('m-time').value,
+                        venue: document.getElementById('m-venue').value.trim(),
+                        competition: document.getElementById('m-competition').value.trim(),
+                        matchStatus: document.getElementById('m-status').value,
+                        teamScore: document.getElementById('m-team-score').value,
+                        opponentScore: document.getElementById('m-opponent-score').value,
+                        notes: document.getElementById('m-notes').value.trim(),
+                        opponentLogo: opponentLogo
+                    };
+
                     const url = editId ? `/api/matches/${editId}` : '/api/matches';
                     const method = editId ? 'PUT' : 'POST';
 
@@ -2827,10 +2835,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!featuredMatchEl) return;
 
         try {
-            const response = await fetch('/api/matches/featured');
-            const match = await response.json();
+            const response = await fetch('/api/matches');
+            let matches = await response.json();
 
-            if (!match) {
+            if (!matches || matches.length === 0) {
                 featuredMatchEl.innerHTML = `
                     <div class="no-match">
                         <i class="fas fa-calendar-times"></i>
@@ -2841,123 +2849,154 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Determine match status styling
+            // Determine status for each match and sort
             const now = new Date();
-            const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
-            let statusClass = 'match-scheduled';
-            let statusText = 'Scheduled';
-
-            if (match.matchStatus === 'completed') {
-                statusClass = 'match-completed';
-                statusText = 'Completed';
-            } else if (match.matchStatus === 'live') {
-                statusClass = 'match-live';
-                statusText = 'LIVE';
-            } else if (match.matchStatus === 'cancelled') {
-                statusClass = 'match-cancelled';
-                statusText = 'Cancelled';
-            } else if (match.matchStatus === 'postponed') {
-                statusClass = 'match-postponed';
-                statusText = 'Postponed';
-            } else if (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000)) {
-                statusClass = 'match-live';
-                statusText = 'LIVE';
-            }
-
-            // Format date and time
-            const matchDate = new Date(match.matchDate).toLocaleDateString('en-US', {
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-            const matchTime = new Date(`1970-01-01T${match.matchTime}`).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
+            matches = matches.map(match => {
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+                const isLive = match.matchStatus !== 'completed' && (
+                    match.matchStatus === 'live' ||
+                    (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000))
+                );
+                const isUpcoming = matchDateTime > now && match.matchStatus !== 'completed' && !isLive;
+                const isFinished = match.matchStatus === 'completed' || (!isLive && matchDateTime < now);
+                return { ...match, isLive, isUpcoming, isFinished, matchDateTime };
             });
 
-            // Build match card HTML
-            let scoreDisplay = '';
-            if (match.matchStatus === 'completed' && match.teamScore !== null && match.opponentScore !== null) {
-                const isWin = (match.homeAway === 'home' && match.teamScore > match.opponentScore) ||
-                    (match.homeAway === 'away' && match.teamScore > match.opponentScore);
-                const isDraw = match.teamScore === match.opponentScore;
-                const resultClass = isWin ? 'match-win' : isDraw ? 'match-draw' : 'match-loss';
-
-                scoreDisplay = `
-                    <div class="match-score ${resultClass}">
-                        <span class="team-score">${match.teamScore}</span>
-                        <span class="score-separator">-</span>
-                        <span class="opponent-score">${match.opponentScore}</span>
-                    </div>
-                `;
-            } else if (match.matchStatus === 'live') {
-                scoreDisplay = `
-                    <div class="match-score match-live-score">
-                        <span class="team-score">${match.teamScore || 0}</span>
-                        <span class="score-separator">-</span>
-                        <span class="opponent-score">${match.opponentScore || 0}</span>
-                        <span class="live-indicator">LIVE</span>
-                    </div>
-                `;
-            } else {
-                scoreDisplay = `
-                    <div class="match-time">
-                        <i class="fas fa-clock"></i> ${matchTime}
-                    </div>
-                `;
-            }
-
-            featuredMatchEl.innerHTML = `
-                <div class="match-header">
-                    <div class="competition-name">${match.competition || 'Friendly'}</div>
-                    <div class="match-status ${statusClass}">${statusText}</div>
-                </div>
-                <div class="match-content">
-                    <div class="team">
-                        <img src="${match.homeAway === 'home' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
-                             alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}" 
-                             class="team-logo">
-                        <div class="team-name">${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</div>
-                    </div>
-                    <div class="match-vs">
-                        ${match.matchStatus === 'completed' || match.matchStatus === 'live' ?
-                    `<div class="score-display">
-                                ${match.teamScore !== null ? match.teamScore : 0}
-                                <span class="score-divider">-</span>
-                                ${match.opponentScore !== null ? match.opponentScore : 0}
-                            </div>` :
-                    `<div class="vs-badge">VS</div>
-                             <div class="match-time-display">${matchTime}</div>
-                             <div class="match-date-display">${matchDate}</div>`
+            // Sort: Completed (most recent last in finished group) | Live | Upcoming
+            // The user wants: Completed | Live | Upcoming
+            matches.sort((a, b) => {
+                // Primary sort: Finished first, then Live, then Upcoming
+                if (a.isFinished && !b.isFinished) return -1;
+                if (!a.isFinished && b.isFinished) return 1;
+                if (a.isFinished && b.isFinished) {
+                    // Within finished, sort by date ascending (oldest first)
+                    return a.matchDateTime - b.matchDateTime;
                 }
-                    </div>
-                    <div class="team">
-                        <img src="${match.homeAway === 'away' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
-                             alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}" 
-                             class="team-logo">
-                        <div class="team-name">${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</div>
-                    </div>
-                </div>
-                <div class="match-footer">
-                    <div class="match-info-item">
-                        <i class="fas fa-calendar"></i> ${matchDate}
-                    </div>
-                    <div class="match-info-item">
-                        <i class="fas fa-map-marker-alt"></i> ${match.venue}
-                    </div>
-                </div>
-                ${match.notes ? `<div class="match-footer" style="border-top: none; padding-top: 0;"><p style="margin: 0; font-style: italic;">${match.notes}</p></div>` : ''}
-            `;
 
+                if (a.isLive && !b.isLive) return -1;
+                if (!a.isLive && b.isLive) return 1;
+
+                // If both are upcoming or scheduled, sort by date ascending (earliest first)
+                if (a.isUpcoming && b.isUpcoming) return a.matchDateTime - b.matchDateTime;
+                // If one is upcoming and the other is neither finished nor live (i.e., scheduled),
+                // upcoming should come first if it's earlier.
+                // This case is implicitly handled by the previous checks if `isUpcoming` is true.
+                // If both are just 'scheduled' (not upcoming, live, or finished), sort by date ascending.
+                return a.matchDateTime - b.matchDateTime;
+            });
+
+            featuredMatchEl.innerHTML = matches.map(match => {
+                const isLive = match.isLive;
+                const isFinished = match.isFinished;
+                // const isUpcoming = match.isUpcoming; // Already available from match object
+
+                let statusClass = 'match-scheduled';
+                let statusText = 'Scheduled';
+
+                if (match.matchStatus === 'completed' || isFinished) {
+                    statusClass = 'match-completed';
+                    statusText = 'Finished';
+                } else if (match.matchStatus === 'live' || isLive) {
+                    statusClass = 'match-live';
+                    statusText = 'Live';
+                } else if (match.matchStatus === 'cancelled') {
+                    statusClass = 'match-cancelled';
+                    statusText = 'Cancelled';
+                } else if (match.matchStatus === 'postponed') {
+                    statusClass = 'match-postponed';
+                    statusText = 'Postponed';
+                } else {
+                    statusText = 'Scheduled';
+                }
+
+                const matchDateFormatted = new Date(match.matchDate).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const matchTimeFormatted = new Date(`1970-01-01T${match.matchTime}`).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                return `
+                    <div class="match-card ${isLive ? 'live-card' : ''} ${match.isFinished ? 'finished-card' : ''} ${match.isUpcoming ? 'upcoming-card' : ''}" 
+                         id="match-card-${match.id}" 
+                         onclick="window.openMatchDetailsModal('${match.id}')">
+                        <div class="match-header">
+                            <div class="competition-name">${match.competition || 'Friendly'}</div>
+                            <div class="match-status ${statusClass}">${statusText}</div>
+                        </div>
+                        <div class="match-content">
+                            <div class="team">
+                                <img src="${match.homeAway === 'home' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
+                                     alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}" 
+                                     class="team-logo">
+                                <div class="team-name">${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</div>
+                            </div>
+                            <div class="match-vs">
+                                ${isFinished || isLive ?
+                        `<div class="score-display">
+                                        ${match.teamScore !== null ? match.teamScore : 0}
+                                        <span class="score-divider">-</span>
+                                        ${match.opponentScore !== null ? match.opponentScore : 0}
+                                    </div>` :
+                        `<div class="vs-badge">VS</div>
+                                     <div class="match-time-display">${matchTimeFormatted}</div>`
+                    }
+                            </div>
+                            <div class="team">
+                                <img src="${match.homeAway === 'away' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
+                                     alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}" 
+                                     class="team-logo">
+                                <div class="team-name">${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</div>
+                            </div>
+                        </div>
+                        <div class="match-footer">
+                            <div class="match-info-item">
+                                <i class="fas fa-calendar"></i> ${matchDateFormatted}
+                            </div>
+                            <div class="match-info-item">
+                                <i class="fas fa-map-marker-alt"></i> ${match.venue || 'TBA'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll helper
+            const scrollToMatch = (matchId) => {
+                const card = document.getElementById(`match-card-${matchId}`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            };
+
+            // Setup Navigation
+            const prevBtn = document.getElementById('match-scroll-prev');
+            const nextBtn = document.getElementById('match-scroll-next');
+
+            if (prevBtn) prevBtn.onclick = () => {
+                featuredMatchEl.scrollBy({ left: -300, behavior: 'smooth' });
+            };
+            if (nextBtn) nextBtn.onclick = () => {
+                featuredMatchEl.scrollBy({ left: 300, behavior: 'smooth' });
+            };
+
+            const jumpBtn = document.getElementById('jump-to-today');
+            if (jumpBtn) {
+                jumpBtn.onclick = () => {
+                    // Jump to live or nearest upcoming
+                    const targetMatch = matches.find(m => m.isLive) || matches.find(m => m.isUpcoming) || matches[matches.length - 1];
+                    if (targetMatch) scrollToMatch(targetMatch.id);
+                };
+            }
+
+            // Auto-scroll removed as requested
         } catch (error) {
-            console.error('Error fetching featured match:', error);
-            featuredMatchEl.innerHTML = `
-                <div class="match-error">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Unable to load match information</p>
-                </div>
-            `;
+            console.error('Error fetching matches:', error);
+            featuredMatchEl.innerHTML = '<p class="error">Failed to load matches.</p>';
         }
     }
 
@@ -3015,10 +3054,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let statusClass = 'match-scheduled';
                 let statusText = 'Scheduled';
 
-                if (match.matchStatus === 'completed') {
+                if (match.matchStatus === 'completed' || (now > matchDateTime && match.matchStatus !== 'cancelled' && match.matchStatus !== 'postponed')) {
                     statusClass = 'match-completed';
-                    statusText = 'FT';
-                } else if (match.matchStatus === 'live') {
+                    statusText = 'FINISHED';
+                } else if (match.matchStatus === 'live' || (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 3 * 60 * 60 * 1000))) {
                     statusClass = 'match-live';
                     statusText = 'LIVE';
                 } else if (match.matchStatus === 'cancelled') {
@@ -3027,9 +3066,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (match.matchStatus === 'postponed') {
                     statusClass = 'match-postponed';
                     statusText = 'POSTPONED';
-                } else if (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000)) {
-                    statusClass = 'match-live';
-                    statusText = 'LIVE';
+                } else {
+                    statusText = 'SCHEDULED';
                 }
 
                 // Format date and time
@@ -3104,14 +3142,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Attach event listeners for Match Center buttons
-    const viewAllMatchesBtn = document.getElementById('view-all-matches-btn');
-    if (viewAllMatchesBtn) {
-        viewAllMatchesBtn.addEventListener('click', toggleMatchesView);
+    // Attach event listeners for Match Center scroll
+    const prevBtn = document.getElementById('match-scroll-prev');
+    const nextBtn = document.getElementById('match-scroll-next');
+    const featuredMatchScroll = document.getElementById('featured-match');
+
+    if (prevBtn && featuredMatchScroll) {
+        prevBtn.addEventListener('click', () => {
+            featuredMatchScroll.scrollBy({ left: -400, behavior: 'smooth' });
+        });
     }
 
-    // Expose function globally for onclick use
-    window.toggleMatchesView = toggleMatchesView;
+    if (nextBtn && featuredMatchScroll) {
+        nextBtn.addEventListener('click', () => {
+            featuredMatchScroll.scrollBy({ left: 400, behavior: 'smooth' });
+        });
+    }
 
     // Handle logo file upload with preview
     const logoFileInput = document.getElementById('m-logo-file');
@@ -3202,4 +3248,144 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-}); // End DOMContentLoaded
+    /**
+     * Open Match Details Modal
+     */
+    window.openMatchDetailsModal = async function (matchId) {
+        const modal = document.getElementById('match-detail-modal');
+        const modalBody = document.getElementById('match-modal-body');
+
+        if (!modal || !modalBody) return;
+
+        try {
+            // Instead of individual fetch, use pre-fetched data if available or fetch all
+            let match;
+            const res = await fetch('/api/matches');
+            const matches = await res.json();
+            match = matches.find(m => String(m.id) === String(matchId));
+
+            if (!match) {
+                showToast('Error', 'Match details not found', 'error');
+                return;
+            }
+
+            const matchDateFormatted = new Date(match.matchDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Determine status based on time (same as cards)
+            const now = new Date();
+            const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+            const isLive = match.matchStatus !== 'completed' && match.matchStatus !== 'cancelled' && (
+                match.matchStatus === 'live' ||
+                (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 3 * 60 * 60 * 1000))
+            );
+            const isFinished = match.matchStatus === 'completed' || (!isLive && matchDateTime < now && match.matchStatus !== 'cancelled');
+
+            console.log('[Modal Debug]', {
+                id: match.id,
+                status: match.matchStatus,
+                isLive,
+                isFinished,
+                teamScore: match.teamScore,
+                now: now.toISOString(),
+                matchTime: matchDateTime.toISOString()
+            });
+
+            // Home / Away assignment
+            const isHome = match.homeAway === 'home';
+            const homeTeam = isHome ? 'AMSAL FC' : match.opponent;
+            const awayTeam = isHome ? match.opponent : 'AMSAL FC';
+            const homeLogo = isHome ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png');
+            const awayLogo = isHome ? (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png') : 'logo.png';
+
+            // Score logic: Show score if completed, live, or if a score has been entered
+            const hasScoreBeenEntered = match.teamScore !== null && match.teamScore !== undefined;
+            const showScoreline = isFinished || isLive || hasScoreBeenEntered;
+
+            const teamScoreVal = match.teamScore !== null ? match.teamScore : 0;
+            const opponentScoreVal = match.opponentScore !== null ? match.opponentScore : 0;
+            const scoreDisplay = showScoreline ? `${teamScoreVal} - ${opponentScoreVal}` : 'VS';
+
+            modalBody.innerHTML = `
+                <div class="match-detail-header">
+                    <div class="competition-name">${match.competition || 'Friendly Match'}</div>
+                    <div class="match-detail-teams">
+                        <div class="match-detail-team">
+                            <img src="${homeLogo}" alt="${homeTeam}">
+                            <div class="team-name" style="color: var(--primary-900) !important; font-weight: 700;">${homeTeam}</div>
+                        </div>
+                        <div class="match-detail-score" style="color: var(--primary-900) !important;">
+                            <span style="font-weight: 800; font-size: 3.5rem;">${scoreDisplay}</span>
+                            ${isLive ? '<div class="live-indicator-modal">LIVE</div>' : ''}
+                        </div>
+                        <div class="match-detail-team">
+                            <img src="${awayLogo}" alt="${awayTeam}">
+                            <div class="team-name" style="color: var(--primary-900) !important; font-weight: 700;">${awayTeam}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="match-detail-body">
+                    <div class="detail-row">
+                        <i class="fas fa-info-circle"></i>
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value" style="text-transform: capitalize; color: var(--primary-900) !important;">
+                            ${isLive ? 'Ongoing' : (isFinished ? 'Finished' : (match.matchStatus === 'cancelled' ? 'Cancelled' : (match.matchStatus === 'postponed' ? 'Postponed' : 'Upcoming')))}
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-calendar-day"></i>
+                        <div class="detail-label">Date</div>
+                        <div class="detail-value">${matchDateFormatted}</div>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-clock"></i>
+                        <div class="detail-label">Time</div>
+                        <div class="detail-value">${match.matchTime}</div>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div class="detail-label">Location/Venue</div>
+                        <div class="detail-value">${match.venue || 'TBA'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-exchange-alt"></i>
+                        <div class="detail-label">Home/Away</div>
+                        <div class="detail-value" style="text-transform: capitalize;">${match.homeAway}</div>
+                    </div>
+                    ${match.notes ? `
+                    <div class="detail-row">
+                        <i class="fas fa-sticky-note"></i>
+                        <div class="detail-label">Notes</div>
+                        <div class="detail-value">${match.notes}</div>
+                    </div>` : ''}
+                </div>
+            `;
+
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error opening match details:', error);
+            if (window.showToast) window.showToast('Failed to load match details', 'error');
+        }
+    };
+
+    // Close Match Modal
+    const matchModalClose = document.getElementById('match-modal-close');
+    const matchModal = document.getElementById('match-detail-modal');
+
+    if (matchModalClose && matchModal) {
+        matchModalClose.onclick = () => {
+            matchModal.classList.remove('active');
+        };
+
+        matchModal.addEventListener('click', (e) => {
+            if (e.target === matchModal) {
+                matchModal.classList.remove('active');
+            }
+        });
+    }
+
+});
