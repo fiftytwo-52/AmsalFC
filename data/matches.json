@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "1768332168158",
+    "opponent": "completed",
+    "matchDate": "2026-01-14",
+    "matchTime": "01:08",
+    "venue": "Amsal Ground",
+    "competition": "Friendly",
+    "homeAway": "home",
+    "teamScore": null,
+    "opponentScore": null,
+    "matchStatus": "scheduled",
+    "notes": "",
+    "opponentLogo": "/uploads/1768332168105-194124171.png",
+    "createdAt": "2026-01-13T19:22:48.159Z"
+  }
+]

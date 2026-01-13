@@ -3327,7 +3327,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const scoreDisplay = showScoreline ? `${teamScoreVal} - ${opponentScoreVal}` : 'VS';
 
             modalBody.innerHTML = `
-            < div class= "match-detail-header" >
+            <div class="match-detail-header">
                     <div class="competition-name">${match.competition || 'Friendly Match'}</div>
                     <div class="match-detail-teams">
                         <div class="match-detail-team">
