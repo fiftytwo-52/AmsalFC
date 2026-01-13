@@ -1529,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clubSettings = document.getElementById('club-settings');
     const clubSettingsForm = document.getElementById('club-settings-form');
 
-    if (clubSettings && sessionStorage.getItem('amsal_admin_role') === 'super') {
+    if (clubSettings && sessionStorage.getItem('amsal_admin')) {
         clubSettings.classList.remove('hidden');
 
         // Load club settings
@@ -1611,7 +1611,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sliderList = document.getElementById('slider-list');
     const addSliderForm = document.getElementById('add-slider-form');
 
-    if (sliderManagement && sessionStorage.getItem('amsal_admin_role') === 'super') {
+    if (sliderManagement && sessionStorage.getItem('amsal_admin')) {
         sliderManagement.classList.remove('hidden');
 
         async function fetchSliderImages() {
@@ -2431,11 +2431,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const matchDateTime = new Date(`${m.matchDate}T${m.matchTime}`);
                     const matchEnd = new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
 
-                    // Auto-detect live: if current time is within match window (scheduled time + 2hrs)
-                    const isAutoLive = now >= matchDateTime && now <= matchEnd && m.matchStatus !== 'completed';
-                    const isLive = m.matchStatus === 'live' || isAutoLive;
-                    const isUpcoming = matchDateTime > now && !isLive && m.matchStatus !== 'completed';
-                    const isCompleted = m.matchStatus === 'completed' || (matchDateTime < now && !isLive);
+                    // Explicit 'live' status takes priority over any time-based logic
+                    const isExplicitlyLive = m.matchStatus === 'live';
+                    // Auto-detect live: if current time is within match window (scheduled time + 2hrs) and not completed
+                    const isAutoLive = now >= matchDateTime && now <= matchEnd && m.matchStatus !== 'completed' && m.matchStatus !== 'live';
+                    const isLive = isExplicitlyLive || isAutoLive;
+                    // Only completed if explicitly marked - NOT if time passed and status is 'live'
+                    const isCompleted = m.matchStatus === 'completed';
+                    const isUpcoming = matchDateTime > now && !isLive && !isCompleted;
 
                     return { ...m, isLive, isUpcoming, isCompleted, matchDateTime, computedStatus: isLive ? 'live' : (isUpcoming ? 'scheduled' : m.matchStatus) };
                 });
@@ -2584,7 +2587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('m-time').value = match.matchTime;
             document.getElementById('m-venue').value = match.venue;
             document.getElementById('m-competition').value = match.competition || '';
-            document.getElementById('m-status').value = match.matchStatus || 'scheduled';
+            document.getElementById('m-match-status').value = match.matchStatus || 'scheduled';
             document.getElementById('m-team-score').value = match.teamScore !== null ? match.teamScore : '';
             document.getElementById('m-opponent-score').value = match.opponentScore !== null ? match.opponentScore : '';
             document.getElementById('m-notes').value = match.notes || '';
@@ -2666,7 +2669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         matchTime: document.getElementById('m-time').value,
                         venue: document.getElementById('m-venue').value.trim(),
                         competition: document.getElementById('m-competition').value.trim(),
-                        matchStatus: document.getElementById('m-status').value,
+                        matchStatus: document.getElementById('m-match-status').value,
                         teamScore: document.getElementById('m-team-score').value,
                         opponentScore: document.getElementById('m-opponent-score').value,
                         notes: document.getElementById('m-notes').value.trim(),
@@ -2767,17 +2770,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Determine match status
+            // Determine match status - explicit 'live' status takes priority
             const now = new Date();
             const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
-            // isLive: strict check - NOT completed AND (marked live OR within time window)
-            const isLive = match.matchStatus !== 'completed' && (
-                match.matchStatus === 'live' ||
-                (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000))
-            );
+            // Explicit 'live' status takes absolute priority
+            const isExplicitlyLive = match.matchStatus === 'live';
+            // Auto-detect live: within time window and not completed
+            const isAutoLive = !isExplicitlyLive && match.matchStatus !== 'completed' &&
+                now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
+            const isLive = isExplicitlyLive || isAutoLive;
 
             const isUpcoming = matchDateTime > now && !isLive && match.matchStatus !== 'completed';
-            const isFinished = match.matchStatus === 'completed' || (matchDateTime < now && !isLive);
+            // Only finished if explicitly completed - NOT if time passed and status is 'live'
+            const isFinished = match.matchStatus === 'completed';
 
             // Status badge
             let statusBadge = '';
@@ -2853,36 +2858,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = new Date();
             matches = matches.map(match => {
                 const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
-                const isLive = match.matchStatus !== 'completed' && (
-                    match.matchStatus === 'live' ||
-                    (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000))
-                );
-                const isUpcoming = matchDateTime > now && match.matchStatus !== 'completed' && !isLive;
-                const isFinished = match.matchStatus === 'completed' || (!isLive && matchDateTime < now);
+                // Explicit 'live' status takes absolute priority
+                const isExplicitlyLive = match.matchStatus === 'live';
+                // Auto-detect live: within time window and not completed/explicitly live
+                const isAutoLive = !isExplicitlyLive && match.matchStatus !== 'completed' &&
+                    now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
+                const isLive = isExplicitlyLive || isAutoLive;
+                const isUpcoming = matchDateTime > now && !isLive && match.matchStatus !== 'completed';
+                // Only finished if explicitly completed - NOT if time passed and status is 'live'
+                const isFinished = match.matchStatus === 'completed';
                 return { ...match, isLive, isUpcoming, isFinished, matchDateTime };
             });
 
-            // Sort: Completed (most recent last in finished group) | Live | Upcoming
-            // The user wants: Completed | Live | Upcoming
+            // Sort: Live first, then Upcoming (nearest first), then Finished (most recent first)
             matches.sort((a, b) => {
-                // Primary sort: Finished first, then Live, then Upcoming
-                if (a.isFinished && !b.isFinished) return -1;
-                if (!a.isFinished && b.isFinished) return 1;
-                if (a.isFinished && b.isFinished) {
-                    // Within finished, sort by date ascending (oldest first)
-                    return a.matchDateTime - b.matchDateTime;
-                }
-
+                // Primary sort: Live first
                 if (a.isLive && !b.isLive) return -1;
                 if (!a.isLive && b.isLive) return 1;
 
-                // If both are upcoming or scheduled, sort by date ascending (earliest first)
+                // Then Upcoming (nearest match first)
+                if (a.isUpcoming && !b.isUpcoming) return -1;
+                if (!a.isUpcoming && b.isUpcoming) return 1;
                 if (a.isUpcoming && b.isUpcoming) return a.matchDateTime - b.matchDateTime;
-                // If one is upcoming and the other is neither finished nor live (i.e., scheduled),
-                // upcoming should come first if it's earlier.
-                // This case is implicitly handled by the previous checks if `isUpcoming` is true.
-                // If both are just 'scheduled' (not upcoming, live, or finished), sort by date ascending.
-                return a.matchDateTime - b.matchDateTime;
+
+                // Then Finished (most recent first)
+                if (a.isFinished && b.isFinished) return b.matchDateTime - a.matchDateTime;
+
+                return b.matchDateTime - a.matchDateTime;
             });
 
             featuredMatchEl.innerHTML = matches.map(match => {
@@ -2893,12 +2895,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 let statusClass = 'match-scheduled';
                 let statusText = 'Scheduled';
 
-                if (match.matchStatus === 'completed' || isFinished) {
-                    statusClass = 'match-completed';
-                    statusText = 'Finished';
-                } else if (match.matchStatus === 'live' || isLive) {
+                // IMPORTANT: Check isLive FIRST before isFinished
+                if (match.matchStatus === 'live' || isLive) {
                     statusClass = 'match-live';
                     statusText = 'Live';
+                } else if (match.matchStatus === 'completed' || isFinished) {
+                    statusClass = 'match-completed';
+                    statusText = 'Finished';
                 } else if (match.matchStatus === 'cancelled') {
                     statusClass = 'match-cancelled';
                     statusText = 'Cancelled';
@@ -3205,6 +3208,12 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchFeaturedMatch();
     renderHeroMatch();
     loadGroundInfo();
+
+    // Auto-refresh match status every 30 seconds to detect when scheduled matches go live
+    setInterval(() => {
+        renderHeroMatch();
+        fetchFeaturedMatch();
+    }, 30000);
 
     // QR Code Modal for Donate Button
     const donateBtn = document.getElementById('donate-btn');

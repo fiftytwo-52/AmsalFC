@@ -1070,7 +1070,7 @@ app.delete('/api/news/:id', async (req, res) => {
 // Get all matches
 app.get('/api/matches', async (req, res) => {
     try {
-        await autoCompleteMatches(); // Ensure status is up-to-date
+        // Note: Auto-complete runs on 5-minute interval only, not on every request
         const matches = await readData(MATCHES_FILE);
         // Sort by match date (upcoming first, then recent)
         const sortedMatches = matches.sort((a, b) => {
@@ -1225,7 +1225,6 @@ app.put('/api/matches/:id', async (req, res) => {
             teamScore: teamScore !== undefined ? (teamScore === '' ? null : parseInt(teamScore)) : matches[matchIndex].teamScore,
             opponentScore: opponentScore !== undefined ? (opponentScore === '' ? null : parseInt(opponentScore)) : matches[matchIndex].opponentScore,
             matchStatus: matchStatus || matches[matchIndex].matchStatus,
-            matchStatus: matchStatus || matches[matchIndex].matchStatus,
             notes: notes !== undefined ? notes : matches[matchIndex].notes,
             opponentLogo: opponentLogo !== undefined ? opponentLogo : matches[matchIndex].opponentLogo,
             updatedAt: new Date().toISOString()
@@ -1282,8 +1281,9 @@ const autoCompleteMatches = async () => {
         let changed = false;
 
         const updatedMatches = matches.map(match => {
-            // Only auto-complete if NOT already completed, cancelled, or postponed
-            if (match.matchStatus !== 'completed' && match.matchStatus !== 'cancelled' && match.matchStatus !== 'postponed') {
+            // Only auto-complete if NOT already completed, cancelled, postponed, or EXPLICITLY SET TO LIVE
+            // If admin manually set status to 'live', we should NOT auto-complete it
+            if (match.matchStatus !== 'completed' && match.matchStatus !== 'cancelled' && match.matchStatus !== 'postponed' && match.matchStatus !== 'live') {
                 const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
 
                 // If the date is valid and we've surpassed the 3-hour mark from start time
@@ -1311,10 +1311,11 @@ const autoCompleteMatches = async () => {
     }
 };
 
+// DISABLED: Auto-complete was overriding manual 'live' status
 // Check every 5 minutes
-setInterval(autoCompleteMatches, 5 * 60 * 1000);
+// setInterval(autoCompleteMatches, 5 * 60 * 1000);
 // Also run immediately on startup
-setTimeout(autoCompleteMatches, 5000);
+// setTimeout(autoCompleteMatches, 5000);
 
 // --- SLIDER ROUTES ---
 
