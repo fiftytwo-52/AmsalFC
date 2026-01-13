@@ -6,8 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="AMSAL FC - Local Football Club in Nepal. Official website of AMSAL FC (AFC). Community football club focused on local youth development and grassroots football in Nepal.">
-    <meta name="keywords" content="AMSAL FC, AMSAL Football Club, AFC Nepal, football club Nepal, soccer team Nepal, AMSAL club, Amsal FC, Nepali football, youth football Nepal, local football club Nepal, community sports Nepal, village football club Nepal">
+    <meta name="description"
+        content="AMSAL FC - Local Football Club in Nepal. Official website of AMSAL FC (AFC). Community football club focused on local youth development and grassroots football in Nepal.">
+    <meta name="keywords"
+        content="AMSAL FC, AMSAL Football Club, AFC Nepal, football club Nepal, soccer team Nepal, AMSAL club, Amsal FC, Nepali football, youth football Nepal, local football club Nepal, community sports Nepal, village football club Nepal">
     <meta name="author" content="AMSAL FC">
     <meta name="robots" content="index, follow">
     <meta name="language" content="English">
@@ -62,7 +64,8 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://amsal-fc.vercel.app/">
     <meta property="og:title" content="AMSAL FC - Local Football Club Website">
-    <meta property="og:description" content="Local community football club in Nepal. Focused on youth development and grassroots football. AMSAL FC - Fall Once, Rise Twice.">
+    <meta property="og:description"
+        content="Local community football club in Nepal. Focused on youth development and grassroots football. AMSAL FC - Fall Once, Rise Twice.">
     <meta property="og:image" content="https://amsal-fc.vercel.app/logo.png">
     <meta property="og:image:alt" content="AMSAL FC Nepal Football Club Logo">
     <meta property="og:locale" content="en_NP">
@@ -72,7 +75,8 @@
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://amsal-fc.vercel.app/">
     <meta property="twitter:title" content="AMSAL FC - Local Football Club">
-    <meta property="twitter:description" content="Local community football club in Nepal. Fall Once, Rise Twice. Supporting grassroots football in Nepal.">
+    <meta property="twitter:description"
+        content="Local community football club in Nepal. Fall Once, Rise Twice. Supporting grassroots football in Nepal.">
     <meta property="twitter:image" content="https://amsal-fc.vercel.app/logo.png">
     <meta property="twitter:image:alt" content="AMSAL FC Nepal Football Club Logo">
 </head>
@@ -92,11 +96,14 @@
 
             <div class="nav-right">
                 <ul class="nav-links" id="nav-links">
-                    <li><a href="#home" title="Home"><i class="fas fa-home"></i></a></li>
-                    <li><a href="#news" title="News"><i class="fas fa-newspaper"></i></a></li>
-                    <li><a href="#squad" title="Squad"><i class="fas fa-users"></i></a></li>
-                    <li><a href="#ground" title="Ground"><i class="fas fa-map-marked-alt"></i></a></li>
-                    <li><a href="#donate" title="Donate"><i class="fas fa-heart"></i></a></li>
+                    <li><a href="#home" title="Home"><i class="fas fa-home"></i><span>Home</span></a></li>
+                    <li><a href="#news" title="News"><i class="fas fa-newspaper"></i><span>News</span></a></li>
+                    <li><a href="#match-center" title="Matches"><i class="fas fa-futbol"></i><span>Matches</span></a>
+                    </li>
+                    <li><a href="#squad" title="Squad"><i class="fas fa-users"></i><span>Squad</span></a></li>
+                    <li><a href="#ground" title="Ground"><i class="fas fa-map-marked-alt"></i><span>Ground</span></a>
+                    </li>
+                    <li><a href="#donate" title="Donate"><i class="fas fa-heart"></i><span>Donate</span></a></li>
                     <li>
                         <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Dark Mode">
                             <i class="fas fa-moon"></i>
@@ -117,10 +124,12 @@
         </div>
 
         <div class="hero-content">
-            <h4 style="color: rgb(255, 0, 0);"><i>*This page is still under construction and not official yet.<br>Some errors may occur.</i></h4>
-           <h1 style="color: white">FALL ONCE, RISE TWICE</h1>
+            <h4 style="color: rgb(255, 0, 0);"><i>*This page is still under construction and not official yet.<br>Some
+                    errors may occur.</i></h4>
+            <h1 style="color: white">FALL ONCE, RISE TWICE</h1>
             <h2>AMSAL FC - Local Football Club</h2>
-            <p>Welcome to the official home of AMSAL FC (AFC). A local community football club where passion meets dedication on the field.</p>
+            <p>Welcome to the official home of AMSAL FC (AFC). A local community football club where passion meets
+                dedication on the field.</p>
             <div class="hero-cta">
                 <a href="#squad" class="btn btn-primary">
                     <i class="fas fa-users"></i> Meet The Team
@@ -134,6 +143,9 @@
                 <div id="clock-time">--:--:--</div>
                 <div id="clock-date">-- -- --</div>
             </div>
+
+            <!-- Hero Match Fixture (Added via JS) -->
+            <div id="hero-match-display"></div>
         </div>
 
         <div class="scroll-indicator">
@@ -155,12 +167,52 @@
         </div>
     </main>
 
+    <!-- Match Center Section -->
+    <section id="match-center" class="section match-center-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-futbol"></i> Match Center</h2>
+                <p class="section-subtitle">Latest match updates and fixtures</p>
+            </div>
+
+            <div class="match-center-container">
+                <div class="featured-match-card" id="featured-match">
+                    <!-- Featured match will be loaded here -->
+                    <div class="match-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading match information...</p>
+                    </div>
+                </div>
+
+                <div class="match-actions">
+                    <button class="btn btn-secondary" id="view-all-matches-btn">
+                        <i class="fas fa-list"></i> All Matches
+                    </button>
+                </div>
+            </div>
+
+            <!-- Expanded matches view (hidden by default) -->
+            <div class="expanded-matches" id="expanded-matches" style="display: none;">
+                <div class="expanded-matches-header">
+                    <h3>All Matches</h3>
+                    <button class="btn btn-sm btn-outline" id="collapse-matches-btn">
+                        <i class="fas fa-chevron-up"></i> Collapse
+                    </button>
+                </div>
+                <div class="matches-grid" id="all-matches-grid">
+                    <!-- All matches will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Squad Section -->
     <section id="squad" class="section squad-section">
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-users"></i> Our Squad</h2>
-                <p class="section-subtitle">Meet the talented local football players who make up our AMSAL FC community team</p>
+                <p class="section-subtitle">Meet the talented local football players who make up our AMSAL FC community
+                    team</p>
             </div>
 
             <div class="squad-grid" id="squad-grid">
@@ -181,7 +233,8 @@
                 </summary>
                 <div class="staff-accordion-content">
                     <div class="section-header">
-                        <p class="section-subtitle staff-subtitle">The dedicated local coaching and management team behind AMSAL FC</p>
+                        <p class="section-subtitle staff-subtitle">The dedicated local coaching and management team
+                            behind AMSAL FC</p>
                     </div>
 
                     <div class="squad-grid" id="staff-grid">
@@ -259,7 +312,8 @@
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title"><i class="fas fa-heart"></i> Support AMSAL FC</h2>
-                <p class="section-subtitle">Help our local community football club continue growing and supporting youth football</p>
+                <p class="section-subtitle">Help our local community football club continue growing and supporting youth
+                    football</p>
             </div>
 
             <div class="donate-container">
@@ -268,8 +322,10 @@
                 </div>
                 <h3>Support Local Football</h3>
                 <p>
-                    Your generous donations help AMSAL FC provide better facilities, equipment, and opportunities for our
-                    local youth players. Every contribution supports our community football development and local sports programs.
+                    Your generous donations help AMSAL FC provide better facilities, equipment, and opportunities for
+                    our
+                    local youth players. Every contribution supports our community football development and local sports
+                    programs.
                 </p>
                 <button class="btn btn-primary btn-large" id="donate-btn">
                     <i class="fas fa-donate"></i> Donate Now

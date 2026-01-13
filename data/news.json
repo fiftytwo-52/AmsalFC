@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "1768304000872",
+    "headline": "testtest",
+    "description": "xcvbhjnk",
+    "publisher": "fiftytwo",
+    "imageUrl": "/uploads/1768304000841-346170668.png",
+    "type": "news",
+    "date": "2026-01-13T11:33:20.872Z",
+    "dateFormatted": "Jan 13, 2026"
+  }
+]

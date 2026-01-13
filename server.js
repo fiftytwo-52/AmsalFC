@@ -52,6 +52,7 @@ const NEWS_FILE = path.join(DATA_DIR, 'news.json');
 const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
 const CLUB_FILE = path.join(DATA_DIR, 'club.json');
 const SLIDER_FILE = path.join(DATA_DIR, 'slider.json');
+const MATCHES_FILE = path.join(DATA_DIR, 'matches.json');
 
 // Create uploads directory if it doesn't exist
 try {
@@ -143,7 +144,8 @@ app.get('/api/database-status', async (req, res) => {
             { file: NEWS_FILE, key: 'news', name: 'news' },
             { file: ADMINS_FILE, key: 'admins', name: 'admins' },
             { file: SLIDER_FILE, key: 'slider', name: 'slider' },
-            { file: CLUB_FILE, key: 'club', name: 'club' }
+            { file: CLUB_FILE, key: 'club', name: 'club' },
+            { file: MATCHES_FILE, key: 'matches', name: 'matches' }
         ];
 
         for (const { file, key, name } of dataTypes) {
@@ -190,6 +192,7 @@ app.get('/api/export-database', async (req, res) => {
             admins: await readData(ADMINS_FILE),
             slider: await readData(SLIDER_FILE),
             club: await readData(CLUB_FILE),
+            matches: await readData(MATCHES_FILE),
             exportedAt: new Date().toISOString()
         };
 
@@ -273,6 +276,10 @@ app.post('/api/bomb-database', async (req, res) => {
         };
         await writeData(CLUB_FILE, initialClub);
         console.log('[Bomb Database] ✅ Club data reset to initial state');
+
+        // 6. Reset Matches (empty array)
+        await writeData(MATCHES_FILE, []);
+        console.log('[Bomb Database] ✅ Matches data wiped');
 
         // Emit real-time updates to connected clients
         io.emit('database-bombed', {
@@ -1054,6 +1061,209 @@ app.delete('/api/news/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting news:', error);
         res.status(500).json({ error: 'Failed to delete news' });
+    }
+});
+
+// --- MATCH ROUTES ---
+
+// Get all matches
+app.get('/api/matches', async (req, res) => {
+    try {
+        const matches = await readData(MATCHES_FILE);
+        // Sort by match date (upcoming first, then recent)
+        const sortedMatches = matches.sort((a, b) => {
+            const dateA = new Date(a.matchDate);
+            const dateB = new Date(b.matchDate);
+            return dateB - dateA; // Most recent/upcoming first
+        });
+        res.json(sortedMatches);
+    } catch (error) {
+        console.error('Error fetching matches:', error);
+        res.status(500).json({ error: 'Failed to fetch matches' });
+    }
+});
+
+// Get featured match (live first, then upcoming, then recent)
+app.get('/api/matches/featured', async (req, res) => {
+    try {
+        const matches = await readData(MATCHES_FILE);
+        const now = new Date();
+
+        // 1. First priority: Find match with status explicitly set to 'live'
+        const liveMatch = matches.find(match => match.matchStatus === 'live');
+        if (liveMatch) {
+            return res.json(liveMatch);
+        }
+
+        // 2. Second priority: Find time-based ongoing match (within 2 hours of start)
+        const ongoingMatch = matches.find(match => {
+            const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+            const matchEnd = new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
+            return now >= matchDateTime && now <= matchEnd && match.matchStatus !== 'completed';
+        });
+        if (ongoingMatch) {
+            return res.json(ongoingMatch);
+        }
+
+        // 3. Third priority: Find upcoming match (earliest first)
+        const upcomingMatch = matches
+            .filter(match => {
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+                return matchDateTime > now && match.matchStatus !== 'completed';
+            })
+            .sort((a, b) => new Date(`${a.matchDate}T${a.matchTime}`) - new Date(`${b.matchDate}T${b.matchTime}`))[0];
+        if (upcomingMatch) {
+            return res.json(upcomingMatch);
+        }
+
+        // 4. Last resort: Find most recent completed match
+        const recentMatch = matches
+            .filter(match => {
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+                return matchDateTime < now || match.matchStatus === 'completed';
+            })
+            .sort((a, b) => new Date(`${b.matchDate}T${b.matchTime}`) - new Date(`${a.matchDate}T${a.matchTime}`))[0];
+        if (recentMatch) {
+            return res.json(recentMatch);
+        }
+
+        // If no matches, return null
+        res.json(null);
+    } catch (error) {
+        console.error('Error fetching featured match:', error);
+        res.status(500).json({ error: 'Failed to fetch featured match' });
+    }
+});
+
+// Add new match
+app.post('/api/matches', async (req, res) => {
+    try {
+        const {
+            opponent,
+            matchDate,
+            matchTime,
+            venue,
+            competition,
+            homeAway,
+            teamScore,
+            opponentScore,
+            matchStatus,
+            notes,
+            opponentLogo
+        } = req.body;
+
+        if (!opponent || !matchDate || !matchTime || !venue) {
+            return res.status(400).json({ error: 'Opponent, match date, time, and venue are required' });
+        }
+
+        const matches = await readData(MATCHES_FILE);
+
+        const newMatch = {
+            id: Date.now().toString(),
+            opponent: opponent.trim(),
+            matchDate: matchDate,
+            matchTime: matchTime,
+            venue: venue.trim(),
+            competition: competition || '',
+            homeAway: homeAway || 'home',
+            teamScore: teamScore !== undefined ? parseInt(teamScore) : null,
+            opponentScore: opponentScore !== undefined ? parseInt(opponentScore) : null,
+            matchStatus: matchStatus || 'scheduled',
+            notes: notes || '',
+            opponentLogo: opponentLogo || '',
+            createdAt: new Date().toISOString()
+        };
+
+        matches.push(newMatch);
+        await writeData(MATCHES_FILE, matches);
+
+        // Emit real-time update
+        io.emit('match-added', newMatch);
+
+        res.status(201).json(newMatch);
+    } catch (error) {
+        console.error('Error adding match:', error);
+        res.status(500).json({ error: 'Failed to add match' });
+    }
+});
+
+// Update match
+app.put('/api/matches/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            opponent,
+            matchDate,
+            matchTime,
+            venue,
+            competition,
+            homeAway,
+            teamScore,
+            opponentScore,
+            matchStatus,
+            notes,
+            opponentLogo
+        } = req.body;
+
+        const matches = await readData(MATCHES_FILE);
+        const matchIndex = matches.findIndex(m => String(m.id) === String(id));
+
+        if (matchIndex === -1) {
+            return res.status(404).json({ error: 'Match not found' });
+        }
+
+        const updatedMatch = {
+            ...matches[matchIndex],
+            opponent: opponent ? opponent.trim() : matches[matchIndex].opponent,
+            matchDate: matchDate || matches[matchIndex].matchDate,
+            matchTime: matchTime || matches[matchIndex].matchTime,
+            venue: venue ? venue.trim() : matches[matchIndex].venue,
+            competition: competition !== undefined ? competition : matches[matchIndex].competition,
+            homeAway: homeAway || matches[matchIndex].homeAway,
+            teamScore: teamScore !== undefined ? (teamScore === '' ? null : parseInt(teamScore)) : matches[matchIndex].teamScore,
+            opponentScore: opponentScore !== undefined ? (opponentScore === '' ? null : parseInt(opponentScore)) : matches[matchIndex].opponentScore,
+            matchStatus: matchStatus || matches[matchIndex].matchStatus,
+            matchStatus: matchStatus || matches[matchIndex].matchStatus,
+            notes: notes !== undefined ? notes : matches[matchIndex].notes,
+            opponentLogo: opponentLogo !== undefined ? opponentLogo : matches[matchIndex].opponentLogo,
+            updatedAt: new Date().toISOString()
+        };
+
+        matches[matchIndex] = updatedMatch;
+        await writeData(MATCHES_FILE, matches);
+
+        // Emit real-time update
+        io.emit('match-updated', updatedMatch);
+
+        res.json(updatedMatch);
+    } catch (error) {
+        console.error('Error updating match:', error);
+        res.status(500).json({ error: 'Failed to update match' });
+    }
+});
+
+// Delete match
+app.delete('/api/matches/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let matches = await readData(MATCHES_FILE);
+        const initialLength = matches.length;
+
+        matches = matches.filter(m => String(m.id) !== String(id));
+
+        if (matches.length === initialLength) {
+            return res.status(404).json({ error: 'Match not found' });
+        }
+
+        await writeData(MATCHES_FILE, matches);
+
+        // Emit real-time update
+        io.emit('match-deleted', { id });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting match:', error);
+        res.status(500).json({ error: 'Failed to delete match' });
     }
 });
 

@@ -141,7 +141,7 @@ async function uploadImage(file, type = 'player') {
     formData.append('image', file);
 
     try {
-        console.log(`Uploading ${file.name} (${Math.round(file.size/1024)}KB) as ${type}...`);
+        console.log(`Uploading ${file.name} (${Math.round(file.size / 1024)}KB) as ${type}...`);
 
         const res = await fetch(`/api/upload/${type}`, {
             method: 'POST',
@@ -160,11 +160,11 @@ async function uploadImage(file, type = 'player') {
 
         console.log('Upload successful:', data.imageUrl);
         return data.imageUrl;
-            } catch (error) {
-                console.error('Upload error:', error.message);
-                // If upload fails, don't proceed with saving
-                throw new Error(`Failed to upload image: ${error.message}`);
-            }
+    } catch (error) {
+        console.error('Upload error:', error.message);
+        // If upload fails, don't proceed with saving
+        throw new Error(`Failed to upload image: ${error.message}`);
+    }
 }
 
 /**
@@ -361,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileMenuBtn && navLinks) {
         mobileMenuBtn.addEventListener('click', () => {
             navLinks.classList.toggle('active');
+            mobileMenuBtn.classList.toggle('active');
         });
 
         // Close menu when clicking a link
@@ -1511,40 +1512,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-  
+
     // Delete Member Function (Global) - Fortified for Vercel KV
-window.deleteMember = async (id) => {
-    showConfirm('Remove Member?', 'Warning: This will permanently remove this member from the team. Continue?', async () => {
-        try {
-            // Use the proper DELETE endpoint
-            const deleteRes = await fetch(`/api/members/${id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' }
-            });
+    window.deleteMember = async (id) => {
+        showConfirm('Remove Member?', 'Warning: This will permanently remove this member from the team. Continue?', async () => {
+            try {
+                // Use the proper DELETE endpoint
+                const deleteRes = await fetch(`/api/members/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-            if (deleteRes.ok) {
-                // Refresh data on screen
-                await fetchMembers();
-                showToast('Removed', 'Member has been removed from the team', 'success');
+                if (deleteRes.ok) {
+                    // Refresh data on screen
+                    await fetchMembers();
+                    showToast('Removed', 'Member has been removed from the team', 'success');
 
-                // Reset form if we were editing this person
-                const editIdField = document.getElementById('m-edit-id');
-                if (editIdField && editIdField.value === String(id)) {
-                    document.getElementById('add-member-form').reset();
-                    // Clear the edit state
-                    editIdField.value = '';
-                    document.getElementById('m-submit-btn').innerHTML = '<i class="fas fa-plus"></i> Add Member';
+                    // Reset form if we were editing this person
+                    const editIdField = document.getElementById('m-edit-id');
+                    if (editIdField && editIdField.value === String(id)) {
+                        document.getElementById('add-member-form').reset();
+                        // Clear the edit state
+                        editIdField.value = '';
+                        document.getElementById('m-submit-btn').innerHTML = '<i class="fas fa-plus"></i> Add Member';
+                    }
+                } else {
+                    const errorData = await deleteRes.json();
+                    throw new Error(errorData.error || 'Failed to remove member');
                 }
-            } else {
-                const errorData = await deleteRes.json();
-                throw new Error(errorData.error || 'Failed to remove member');
+            } catch (e) {
+                console.error(e);
+                showToast('Error', 'Could not remove information', 'error');
             }
-        } catch (e) {
-            console.error(e);
-            showToast('Error', 'Could not remove information', 'error');
-        }
-    });
-};
+        });
+    };
 
 
 
@@ -2419,9 +2420,744 @@ window.deleteMember = async (id) => {
         });
     }
 
+
+    // ============================================
+    // MATCH MANAGEMENT (ADMIN ONLY)
+    // ============================================
+
+    const adminMatchesList = document.getElementById('admin-matches-list');
+    const addMatchForm = document.getElementById('add-match-form');
+
+    // Only run if on admin page
+    if (adminMatchesList) {
+
+        // Fetch and display matches in admin panel
+        async function fetchAdminMatches() {
+            try {
+                const res = await fetch('/api/matches');
+                let matches = await res.json();
+
+                const now = new Date();
+
+                // Compute live status and sort: live > upcoming > completed
+                matches = matches.map(m => {
+                    const matchDateTime = new Date(`${m.matchDate}T${m.matchTime}`);
+                    const matchEnd = new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
+
+                    // Auto-detect live: if current time is within match window (scheduled time + 2hrs)
+                    const isAutoLive = now >= matchDateTime && now <= matchEnd && m.matchStatus !== 'completed';
+                    const isLive = m.matchStatus === 'live' || isAutoLive;
+                    const isUpcoming = matchDateTime > now && !isLive && m.matchStatus !== 'completed';
+                    const isCompleted = m.matchStatus === 'completed' || (matchDateTime < now && !isLive);
+
+                    return { ...m, isLive, isUpcoming, isCompleted, matchDateTime, computedStatus: isLive ? 'live' : (isUpcoming ? 'scheduled' : m.matchStatus) };
+                });
+
+                // Sort: Live first, then Upcoming (by date), then Completed (by date desc)
+                matches.sort((a, b) => {
+                    if (a.isLive && !b.isLive) return -1;
+                    if (!a.isLive && b.isLive) return 1;
+                    if (a.isUpcoming && !b.isUpcoming) return -1;
+                    if (!a.isUpcoming && b.isUpcoming) return 1;
+                    if (a.isUpcoming && b.isUpcoming) return a.matchDateTime - b.matchDateTime;
+                    return b.matchDateTime - a.matchDateTime;
+                });
+
+                // Store globally for editing
+                window.allMatches = matches;
+
+                if (matches.length === 0) {
+                    adminMatchesList.innerHTML = '<p class="text-center" style="padding: 2rem; color: var(--neutral-500);">No matches scheduled yet.</p>';
+                } else {
+                    adminMatchesList.innerHTML = matches.map(m => {
+                        const date = new Date(m.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const statusColors = {
+                            'scheduled': 'var(--primary-100)',
+                            'live': '#fee2e2', // red-100
+                            'completed': '#dcfce7', // green-100
+                            'cancelled': '#f3f4f6', // gray-100
+                            'postponed': '#ffedd5' // orange-100
+                        };
+
+                        // Use computed status for display
+                        const displayStatus = m.isLive ? 'live' : (m.isUpcoming ? 'scheduled' : m.matchStatus);
+                        const statusColor = statusColors[displayStatus] || '#f3f4f6';
+                        const statusText = m.isLive ? '🔴 LIVE' : (displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1));
+
+                        return `
+                        <div class="list-item" style="${m.isLive ? 'border-left: 4px solid #ef4444; background: #fef2f2;' : ''}">
+                            <div class="item-info">
+                                <div style="display: flex; flex-direction: column;">
+                                    <h5 style="margin-bottom: 0.25rem; display: flex; align-items: center; gap: 8px;">
+                                        ${m.opponentLogo ? `<img src="${m.opponentLogo}" style="width: 20px; height: 20px; object-fit: contain;">` : '<i class="fas fa-futbol"></i>'}
+                                        ${m.homeAway === 'home' ? 'vs ' + m.opponent : '@ ' + m.opponent}
+                                        ${m.isLive && m.teamScore !== null ? `<span style="font-weight: bold; color: #dc2626;">${m.teamScore} - ${m.opponentScore}</span>` : ''}
+                                        <span style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: ${statusColor}; margin-left: auto; ${m.isLive ? 'animation: pulse 1s infinite;' : ''}">
+                                            ${statusText}
+                                        </span>
+                                    </h5>
+                                    <p style="font-size: 0.85rem; color: var(--neutral-500);">
+                                        <i class="far fa-calendar"></i> ${date} at ${m.matchTime} • ${m.venue}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="item-actions">
+                                ${m.isLive ? `
+                                <button onclick="markMatchFinished('${m.id}')" class="btn-icon btn-success" title="Mark as Finished" style="background-color: #dcfce7; color: #166534; margin-right: 0.25rem;">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                ` : ''}
+                                <button onclick="editMatchInForm('${m.id}')" class="btn-icon" title="Edit Match">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteMatch('${m.id}')" class="btn-icon btn-danger" title="Remove Match">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `}).join('');
+                }
+            } catch (error) {
+                console.error('Error fetching admin matches:', error);
+                adminMatchesList.innerHTML = '<p class="text-center text-danger">Failed to load matches.</p>';
+            }
+        }
+
+        // Expose function globally
+        window.markMatchFinished = async (id) => {
+            if (!confirm('Are you sure you want to mark this match as finished? This will stop live updates.')) return;
+
+            try {
+                // Get the current match data first
+                const match = window.allMatches.find(m => m.id === id);
+                if (!match) return;
+
+                const response = await fetch(`/api/matches/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...match,
+                        matchStatus: 'completed'
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Match marked as finished');
+                    fetchAdminMatches(); // Refresh list
+                } else {
+                    showToast('Failed to update match', 'error');
+                }
+            } catch (error) {
+                console.error('Error finishing match:', error);
+                showToast('Error finishing match', 'error');
+            }
+        };
+
+        // Initialize Admin
+        fetchAdminMatches();
+        // Assuming fetchNewsAdmin and fetchMembersAdmin are defined elsewhere or will be added.
+        // For now, adding them as per instruction.
+        // fetchNewsAdmin();
+        // fetchMembersAdmin();
+        window.fetchAdminMatches = fetchAdminMatches;
+
+        // Delete Match
+        window.deleteMatch = async (id) => {
+            showConfirm('Delete Match?', 'Are you sure you want to delete this match record?', async () => {
+                try {
+                    const res = await fetch(`/api/matches/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        await fetchAdminMatches();
+                        showToast('Deleted', 'Match has been removed', 'success');
+                    } else {
+                        throw new Error('Failed to delete match');
+                    }
+                } catch (error) {
+                    console.error('Error deleting match:', error);
+                    showToast('Error', 'Failed to delete match', 'error');
+                }
+            });
+        };
+
+        // Edit Match - Populate Form
+        window.editMatchInForm = (id) => {
+            const match = window.allMatches.find(m => String(m.id) === String(id));
+            if (!match) return;
+
+            // Scroll to form
+            const formCard = addMatchForm.closest('.dashboard-card');
+            formCard.scrollIntoView({ behavior: 'smooth' });
+            formCard.style.outline = '3px solid var(--primary-500)';
+            setTimeout(() => formCard.style.outline = 'none', 2000);
+
+            // Populate fields
+            document.getElementById('m-opponent').value = match.opponent;
+            document.getElementById('m-home-away').value = match.homeAway;
+            document.getElementById('m-date').value = match.matchDate; // YYYY-MM-DD format works directly
+            document.getElementById('m-time').value = match.matchTime;
+            document.getElementById('m-venue').value = match.venue;
+            document.getElementById('m-competition').value = match.competition || '';
+            document.getElementById('m-status').value = match.matchStatus || 'scheduled';
+            document.getElementById('m-team-score').value = match.teamScore !== null ? match.teamScore : '';
+            document.getElementById('m-opponent-score').value = match.opponentScore !== null ? match.opponentScore : '';
+            document.getElementById('m-notes').value = match.notes || '';
+            document.getElementById('m-logo').value = match.opponentLogo || '';
+
+            // Handle UI State
+            const submitBtn = addMatchForm.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Match';
+            submitBtn.classList.add('accent');
+
+            // Add hidden ID field if not exists
+            let idField = document.getElementById('match-edit-id');
+            if (!idField) {
+                idField = document.createElement('input');
+                idField.type = 'hidden';
+                idField.id = 'match-edit-id';
+                addMatchForm.appendChild(idField);
+            }
+            idField.value = match.id;
+
+            // Add Cancel button
+            let cancelBtn = document.getElementById('match-cancel-edit');
+            if (!cancelBtn) {
+                cancelBtn = document.createElement('button');
+                cancelBtn.id = 'match-cancel-edit';
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'form-submit';
+                cancelBtn.style.background = 'var(--neutral-500)';
+                cancelBtn.style.marginLeft = '1rem';
+                cancelBtn.innerHTML = 'Cancel Edit';
+                submitBtn.parentNode.appendChild(cancelBtn);
+
+                cancelBtn.onclick = () => {
+                    addMatchForm.reset();
+                    submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Match';
+                    submitBtn.classList.remove('accent');
+                    if (idField) idField.value = '';
+                    cancelBtn.remove();
+                };
+            }
+
+            showToast('Mode: Edit', `Editing match vs ${match.opponent}`, 'info');
+        };
+
+        // Form Submission
+        if (addMatchForm) {
+            addMatchForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const editIdInput = document.getElementById('match-edit-id');
+                const editId = editIdInput ? editIdInput.value : null;
+
+                const payload = {
+                    opponent: document.getElementById('m-opponent').value.trim(),
+                    homeAway: document.getElementById('m-home-away').value,
+                    matchDate: document.getElementById('m-date').value,
+                    matchTime: document.getElementById('m-time').value,
+                    venue: document.getElementById('m-venue').value.trim(),
+                    competition: document.getElementById('m-competition').value.trim(),
+                    matchStatus: document.getElementById('m-status').value,
+                    teamScore: document.getElementById('m-team-score').value,
+                    opponentScore: document.getElementById('m-opponent-score').value,
+                    notes: document.getElementById('m-notes').value.trim(),
+                    opponentLogo: document.getElementById('m-logo').value.trim()
+                };
+
+                try {
+                    const url = editId ? `/api/matches/${editId}` : '/api/matches';
+                    const method = editId ? 'PUT' : 'POST';
+
+                    showToast(editId ? 'Updating' : 'Adding', editId ? 'Updating match...' : 'Adding new match...', 'info');
+
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        showToast('Success', editId ? 'Match updated successfully!' : 'Match added successfully!', 'success');
+                        addMatchForm.reset();
+
+                        // Reset UI if editing
+                        if (editId) {
+                            const submitBtn = addMatchForm.querySelector('button[type="submit"]');
+                            submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Match';
+                            submitBtn.classList.remove('accent');
+                            if (editIdInput) editIdInput.value = '';
+                            const cancelBtn = document.getElementById('match-cancel-edit');
+                            if (cancelBtn) cancelBtn.remove();
+                        }
+
+                        await fetchAdminMatches();
+                    } else {
+                        const err = await res.json();
+                        throw new Error(err.error || 'Failed to save match');
+                    }
+                } catch (error) {
+                    console.error('Error saving match:', error);
+                    showToast('Error', error.message, 'error');
+                }
+            });
+        }
+    }
+
+    // Socket listeners for real-time match updates (Global)
+    if (typeof io !== 'undefined') {
+        // We already have the socket instance from earlier in the file
+        // Just adding specific listeners
+        // Note: The socket instance is created inside the 'if (typeof io !== 'undefined')' block above (line ~2001)
+        // Since that block is closed, we need to access the 'socket' variable. 
+        // However, 'socket' was defined with 'const' inside that block, so it's not accessible here.
+        // We should add a new block or move this logic inside the previous socket block.
+        // BUT, checking the file structure, the socket block is at line 2001-2053.
+        // It's cleaner to define a new socket listener block here if we can't easily merge.
+        // A new 'const socket = io()' is fine as socket.io handles multiplexing usually, 
+        // or better, let's attach these listeners inside a new block that checks for io.
+        const socket = io(); // Re-initializing to be safe and simple
+
+        socket.on('match-added', () => {
+            if (typeof fetchAdminMatches === 'function') fetchAdminMatches();
+            if (typeof fetchFeaturedMatch === 'function') fetchFeaturedMatch();
+            if (typeof fetchAllMatches === 'function') fetchAllMatches();
+            if (typeof renderHeroMatch === 'function') renderHeroMatch();
+        });
+
+        socket.on('match-updated', () => {
+            if (typeof fetchAdminMatches === 'function') fetchAdminMatches();
+            if (typeof fetchFeaturedMatch === 'function') fetchFeaturedMatch();
+            if (typeof fetchAllMatches === 'function') fetchAllMatches();
+            if (typeof renderHeroMatch === 'function') renderHeroMatch();
+        });
+
+        socket.on('match-deleted', () => {
+            if (typeof fetchAdminMatches === 'function') fetchAdminMatches();
+            if (typeof fetchFeaturedMatch === 'function') fetchFeaturedMatch();
+            if (typeof fetchAllMatches === 'function') fetchAllMatches();
+            if (typeof renderHeroMatch === 'function') renderHeroMatch();
+        });
+    }
+
+    // ============================================
+    // MATCH CENTER FUNCTIONS
+    // ============================================
+
+    /**
+     * Render Hero Section Match Fixture
+     */
+    async function renderHeroMatch() {
+        const heroMatchContainer = document.getElementById('hero-match-display');
+        if (!heroMatchContainer) return;
+
+        try {
+            const response = await fetch('/api/matches/featured');
+            const match = await response.json();
+
+            if (!match) {
+                heroMatchContainer.innerHTML = '';
+                return;
+            }
+
+            // Determine match status
+            const now = new Date();
+            const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+            // isLive: strict check - NOT completed AND (marked live OR within time window)
+            const isLive = match.matchStatus !== 'completed' && (
+                match.matchStatus === 'live' ||
+                (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000))
+            );
+
+            const isUpcoming = matchDateTime > now && !isLive && match.matchStatus !== 'completed';
+            const isFinished = match.matchStatus === 'completed' || (matchDateTime < now && !isLive);
+
+            // Status badge
+            let statusBadge = '';
+            if (isLive) {
+                statusBadge = '<span class="hero-status-badge live"><span class="live-dot"></span>LIVE</span>';
+            } else if (isUpcoming) {
+                statusBadge = '<span class="hero-status-badge upcoming">UPCOMING</span>';
+            } else if (isFinished) {
+                statusBadge = '<span class="hero-status-badge finished">FT</span>';
+            }
+
+            // Team logos
+            const homeLogo = 'logo.png';
+            const opponentLogo = match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png';
+
+            // Display time or score - for live matches, always show score
+            let centerDisplay = '';
+            if (isLive) {
+                centerDisplay = `<span class="hero-live-score">${match.teamScore !== null ? match.teamScore : 0} - ${match.opponentScore !== null ? match.opponentScore : 0}</span>`;
+            } else if (isFinished) {
+                centerDisplay = `${match.teamScore !== null ? match.teamScore : 0} - ${match.opponentScore !== null ? match.opponentScore : 0}`;
+            } else {
+                centerDisplay = match.matchTime;
+            }
+
+            heroMatchContainer.innerHTML = `
+                <div class="hero-match-minimal ${isLive ? 'hero-match-live' : ''}" onclick="document.getElementById('match-center').scrollIntoView({behavior: 'smooth'})">
+                    ${statusBadge}
+                    <div class="hero-match-content">
+                        <div class="hero-match-team">
+                            <img src="${match.homeAway === 'home' ? homeLogo : opponentLogo}" alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}">
+                            <span>${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</span>
+                        </div>
+                        <div class="hero-match-vs">
+                            ${centerDisplay}
+                        </div>
+                        <div class="hero-match-team">
+                            <img src="${match.homeAway === 'away' ? homeLogo : opponentLogo}" alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}">
+                            <span>${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        } catch (error) {
+            console.error('Error rendering hero match:', error);
+        }
+    }
+
+    /**
+     * Fetch and display featured match
+     */
+    async function fetchFeaturedMatch() {
+        const featuredMatchEl = document.getElementById('featured-match');
+        if (!featuredMatchEl) return;
+
+        try {
+            const response = await fetch('/api/matches/featured');
+            const match = await response.json();
+
+            if (!match) {
+                featuredMatchEl.innerHTML = `
+                    <div class="no-match">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Matches Scheduled</h3>
+                        <p>Check back later for upcoming matches</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Determine match status styling
+            const now = new Date();
+            const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+            let statusClass = 'match-scheduled';
+            let statusText = 'Scheduled';
+
+            if (match.matchStatus === 'completed') {
+                statusClass = 'match-completed';
+                statusText = 'Completed';
+            } else if (match.matchStatus === 'live') {
+                statusClass = 'match-live';
+                statusText = 'LIVE';
+            } else if (match.matchStatus === 'cancelled') {
+                statusClass = 'match-cancelled';
+                statusText = 'Cancelled';
+            } else if (match.matchStatus === 'postponed') {
+                statusClass = 'match-postponed';
+                statusText = 'Postponed';
+            } else if (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000)) {
+                statusClass = 'match-live';
+                statusText = 'LIVE';
+            }
+
+            // Format date and time
+            const matchDate = new Date(match.matchDate).toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            const matchTime = new Date(`1970-01-01T${match.matchTime}`).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Build match card HTML
+            let scoreDisplay = '';
+            if (match.matchStatus === 'completed' && match.teamScore !== null && match.opponentScore !== null) {
+                const isWin = (match.homeAway === 'home' && match.teamScore > match.opponentScore) ||
+                    (match.homeAway === 'away' && match.teamScore > match.opponentScore);
+                const isDraw = match.teamScore === match.opponentScore;
+                const resultClass = isWin ? 'match-win' : isDraw ? 'match-draw' : 'match-loss';
+
+                scoreDisplay = `
+                    <div class="match-score ${resultClass}">
+                        <span class="team-score">${match.teamScore}</span>
+                        <span class="score-separator">-</span>
+                        <span class="opponent-score">${match.opponentScore}</span>
+                    </div>
+                `;
+            } else if (match.matchStatus === 'live') {
+                scoreDisplay = `
+                    <div class="match-score match-live-score">
+                        <span class="team-score">${match.teamScore || 0}</span>
+                        <span class="score-separator">-</span>
+                        <span class="opponent-score">${match.opponentScore || 0}</span>
+                        <span class="live-indicator">LIVE</span>
+                    </div>
+                `;
+            } else {
+                scoreDisplay = `
+                    <div class="match-time">
+                        <i class="fas fa-clock"></i> ${matchTime}
+                    </div>
+                `;
+            }
+
+            featuredMatchEl.innerHTML = `
+                <div class="match-header">
+                    <div class="competition-name">${match.competition || 'Friendly'}</div>
+                    <div class="match-status ${statusClass}">${statusText}</div>
+                </div>
+                <div class="match-content">
+                    <div class="team">
+                        <img src="${match.homeAway === 'home' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
+                             alt="${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}" 
+                             class="team-logo">
+                        <div class="team-name">${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}</div>
+                    </div>
+                    <div class="match-vs">
+                        ${match.matchStatus === 'completed' || match.matchStatus === 'live' ?
+                    `<div class="score-display">
+                                ${match.teamScore !== null ? match.teamScore : 0}
+                                <span class="score-divider">-</span>
+                                ${match.opponentScore !== null ? match.opponentScore : 0}
+                            </div>` :
+                    `<div class="vs-badge">VS</div>
+                             <div class="match-time-display">${matchTime}</div>
+                             <div class="match-date-display">${matchDate}</div>`
+                }
+                    </div>
+                    <div class="team">
+                        <img src="${match.homeAway === 'away' ? 'logo.png' : (match.opponentLogo || 'https://cdn-icons-png.flaticon.com/512/53/53283.png')}" 
+                             alt="${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}" 
+                             class="team-logo">
+                        <div class="team-name">${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}</div>
+                    </div>
+                </div>
+                <div class="match-footer">
+                    <div class="match-info-item">
+                        <i class="fas fa-calendar"></i> ${matchDate}
+                    </div>
+                    <div class="match-info-item">
+                        <i class="fas fa-map-marker-alt"></i> ${match.venue}
+                    </div>
+                </div>
+                ${match.notes ? `<div class="match-footer" style="border-top: none; padding-top: 0;"><p style="margin: 0; font-style: italic;">${match.notes}</p></div>` : ''}
+            `;
+
+        } catch (error) {
+            console.error('Error fetching featured match:', error);
+            featuredMatchEl.innerHTML = `
+                <div class="match-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Unable to load match information</p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Fetch and display all matches
+     */
+    async function fetchAllMatches() {
+        const allMatchesGrid = document.getElementById('all-matches-grid');
+        if (!allMatchesGrid) return;
+
+        try {
+            const response = await fetch('/api/matches');
+            let matches = await response.json();
+
+            // Sort matches: Live first, then Upcoming (by date), then Completed (by date desc)
+            const now = new Date();
+            matches = matches.map(match => {
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+                const isLive = match.matchStatus !== 'completed' && (
+                    match.matchStatus === 'live' ||
+                    (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000))
+                );
+                const isUpcoming = matchDateTime > now && match.matchStatus !== 'completed' && !isLive;
+                const isFinished = match.matchStatus === 'completed' || (!isLive && matchDateTime < now);
+                return { ...match, isLive, isUpcoming, isFinished, matchDateTime };
+            });
+
+            matches.sort((a, b) => {
+                // Live matches first
+                if (a.isLive && !b.isLive) return -1;
+                if (!a.isLive && b.isLive) return 1;
+                // Then upcoming (earliest first)
+                if (a.isUpcoming && !b.isUpcoming) return -1;
+                if (!a.isUpcoming && b.isUpcoming) return 1;
+                if (a.isUpcoming && b.isUpcoming) return a.matchDateTime - b.matchDateTime;
+                // Then finished (most recent first)
+                return b.matchDateTime - a.matchDateTime;
+            });
+
+            if (matches.length === 0) {
+                allMatchesGrid.innerHTML = `
+                    <div class="no-matches">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Matches Found</h3>
+                        <p>No match fixtures have been scheduled yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            allMatchesGrid.innerHTML = matches.map(match => {
+                // Determine match status styling
+                const now = new Date();
+                const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
+                let statusClass = 'match-scheduled';
+                let statusText = 'Scheduled';
+
+                if (match.matchStatus === 'completed') {
+                    statusClass = 'match-completed';
+                    statusText = 'FT';
+                } else if (match.matchStatus === 'live') {
+                    statusClass = 'match-live';
+                    statusText = 'LIVE';
+                } else if (match.matchStatus === 'cancelled') {
+                    statusClass = 'match-cancelled';
+                    statusText = 'CANCELLED';
+                } else if (match.matchStatus === 'postponed') {
+                    statusClass = 'match-postponed';
+                    statusText = 'POSTPONED';
+                } else if (now >= matchDateTime && now <= new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000)) {
+                    statusClass = 'match-live';
+                    statusText = 'LIVE';
+                }
+
+                // Format date and time
+                const matchDate = new Date(match.matchDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const matchTime = new Date(`1970-01-01T${match.matchTime}`).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                // Build score display
+                let scoreDisplay = '';
+                if (match.matchStatus === 'completed' && match.teamScore !== null && match.opponentScore !== null) {
+                    scoreDisplay = `<span class="match-result">${match.teamScore} - ${match.opponentScore}</span>`;
+                } else if (match.matchStatus === 'live') {
+                    scoreDisplay = `<span class="match-result live">${match.teamScore || 0} - ${match.opponentScore || 0}</span>`;
+                } else {
+                    scoreDisplay = `<span class="match-time">${matchTime}</span>`;
+                }
+
+                return `
+                    <div class="match-item ${statusClass}">
+                        <div class="match-item-header">
+                            <span class="match-item-status">${statusText}</span>
+                            <span class="match-item-competition">${match.competition || 'Friendly'}</span>
+                        </div>
+                        <div class="match-item-teams">
+                            <span class="match-item-team ${match.homeAway === 'home' ? 'home' : ''}">
+                                ${match.homeAway === 'home' ? 'AMSAL FC' : match.opponent}
+                            </span>
+                            ${scoreDisplay}
+                            <span class="match-item-team ${match.homeAway === 'away' ? 'home' : ''}">
+                                ${match.homeAway === 'away' ? 'AMSAL FC' : match.opponent}
+                            </span>
+                        </div>
+                        <div class="match-item-details">
+                            <span class="match-item-date">${matchDate}</span>
+                            <span class="match-item-venue">${match.venue}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error fetching all matches:', error);
+            allMatchesGrid.innerHTML = `
+                <div class="matches-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Unable to load matches</p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Toggle expanded matches view
+     */
+    function toggleMatchesView() {
+        const expandedMatches = document.getElementById('expanded-matches');
+        const viewAllBtn = document.getElementById('view-all-matches-btn');
+        const collapseBtn = document.getElementById('collapse-matches-btn');
+
+        if (expandedMatches.style.display === 'none') {
+            expandedMatches.style.display = 'block';
+            viewAllBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Collapse';
+            fetchAllMatches();
+        } else {
+            expandedMatches.style.display = 'none';
+            viewAllBtn.innerHTML = '<i class="fas fa-list"></i> All Matches';
+        }
+    }
+
+    // Attach event listeners for Match Center buttons
+    const viewAllMatchesBtn = document.getElementById('view-all-matches-btn');
+    if (viewAllMatchesBtn) {
+        viewAllMatchesBtn.addEventListener('click', toggleMatchesView);
+    }
+
+    // Expose function globally for onclick use
+    window.toggleMatchesView = toggleMatchesView;
+
+    // Handle logo file upload with preview
+    const logoFileInput = document.getElementById('m-logo-file');
+    const logoUrlInput = document.getElementById('m-logo');
+    const logoPreview = document.getElementById('logo-preview');
+    const logoPreviewImg = document.getElementById('logo-preview-img');
+
+    if (logoFileInput) {
+        logoFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target.result;
+                    logoUrlInput.value = base64; // Store base64 in the URL input
+                    logoPreviewImg.src = base64;
+                    logoPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                logoPreview.style.display = 'none';
+            }
+        });
+    }
+
+    // Show preview when URL is pasted
+    if (logoUrlInput) {
+        logoUrlInput.addEventListener('input', (e) => {
+            const url = e.target.value.trim();
+            if (url && url.startsWith('http')) {
+                logoPreviewImg.src = url;
+                logoPreview.style.display = 'block';
+            } else if (url.startsWith('data:image')) {
+                logoPreviewImg.src = url;
+                logoPreview.style.display = 'block';
+            } else if (!url) {
+                logoPreview.style.display = 'none';
+            }
+        });
+    }
+
     // Initialize Data
     fetchMembers();
     fetchNews();
+    fetchFeaturedMatch();
+    renderHeroMatch();
     loadGroundInfo();
 
     // QR Code Modal for Donate Button
