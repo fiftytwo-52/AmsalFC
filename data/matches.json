@@ -1,1 +1,49 @@
-[]
+[
+  {
+    "id": "1769020659013",
+    "opponent": "finished",
+    "matchDate": "2026-01-21",
+    "matchTime": "21:24",
+    "venue": "Amsal Ground",
+    "competition": "Friendly",
+    "homeAway": "home",
+    "teamScore": 2,
+    "opponentScore": 2,
+    "matchStatus": "completed",
+    "notes": "",
+    "opponentLogo": "",
+    "createdAt": "2026-01-21T18:37:39.013Z",
+    "updatedAt": "2026-01-21T18:39:07.144Z"
+  },
+  {
+    "id": "1769020685397",
+    "opponent": "live",
+    "matchDate": "2026-01-21",
+    "matchTime": "21:27",
+    "venue": "Amsal Ground",
+    "competition": "Friendly",
+    "homeAway": "home",
+    "teamScore": null,
+    "opponentScore": null,
+    "matchStatus": "completed",
+    "notes": "",
+    "opponentLogo": "",
+    "createdAt": "2026-01-21T18:38:05.397Z",
+    "updatedAt": "2026-01-21T18:42:07.176Z"
+  },
+  {
+    "id": "1769020868383",
+    "opponent": "Upcoming",
+    "matchDate": "2026-01-22",
+    "matchTime": "12:30",
+    "venue": "Amsal Ground",
+    "competition": "Friendly",
+    "homeAway": "home",
+    "teamScore": null,
+    "opponentScore": null,
+    "matchStatus": "scheduled",
+    "notes": "",
+    "opponentLogo": "",
+    "createdAt": "2026-01-21T18:41:08.383Z"
+  }
+]
