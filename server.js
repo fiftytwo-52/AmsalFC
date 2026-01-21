@@ -1097,10 +1097,10 @@ app.get('/api/matches/featured', async (req, res) => {
             return res.json(liveMatch);
         }
 
-        // 2. Second priority: Find time-based ongoing match (within 2 hours of start)
+        // 2. Second priority: Find time-based ongoing match (within 3 hours of start)
         const ongoingMatch = matches.find(match => {
             const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
-            const matchEnd = new Date(matchDateTime.getTime() + 2 * 60 * 60 * 1000);
+            const matchEnd = new Date(matchDateTime.getTime() + 3 * 60 * 60 * 1000); // 3 hours duration
             return now >= matchDateTime && now <= matchEnd && match.matchStatus !== 'completed';
         });
         if (ongoingMatch) {
@@ -1274,15 +1274,14 @@ app.delete('/api/matches/:id', async (req, res) => {
  */
 const autoCompleteMatches = async () => {
     try {
-        console.log('[Status Job] Checking for matches to auto-complete...');
+        // console.log('[Status Job] Checking for matches to auto-complete...');
         const matches = await readData(MATCHES_FILE);
         const now = new Date();
         const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
         let changed = false;
 
         const updatedMatches = matches.map(match => {
-            // Only auto-complete if NOT already completed, cancelled, postponed, or EXPLICITLY SET TO LIVE
-            // If admin manually set status to 'live', we should NOT auto-complete it
+            // Only auto-complete if NOT already completed, cancelled, postponed, or LIVE
             if (match.matchStatus !== 'completed' && match.matchStatus !== 'cancelled' && match.matchStatus !== 'postponed' && match.matchStatus !== 'live') {
                 const matchDateTime = new Date(`${match.matchDate}T${match.matchTime}`);
 
@@ -1311,11 +1310,10 @@ const autoCompleteMatches = async () => {
     }
 };
 
-// DISABLED: Auto-complete was overriding manual 'live' status
-// Check every 5 minutes
-// setInterval(autoCompleteMatches, 5 * 60 * 1000);
+// Auto-complete check enabled - runs every 60 seconds
+setInterval(autoCompleteMatches, 60 * 1000);
 // Also run immediately on startup
-// setTimeout(autoCompleteMatches, 5000);
+setTimeout(autoCompleteMatches, 5000);
 
 // --- SLIDER ROUTES ---
 
