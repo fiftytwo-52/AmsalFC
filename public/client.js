@@ -278,6 +278,71 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ============================================
+    // ANIMATIONS & VISUALS
+    // ============================================
+
+    function initScrollAnimations() {
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.15
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target); // Only animate once
+                }
+            });
+        }, observerOptions);
+
+        // Add animation classes to elements
+        document.querySelectorAll('.section-title').forEach(el => {
+            el.classList.add('reveal-on-scroll');
+            observer.observe(el);
+        });
+
+        document.querySelectorAll('.hero-content > *').forEach((el, index) => {
+            el.classList.add('reveal-on-scroll');
+            el.style.transitionDelay = `${index * 150}ms`; // Stagger
+            observer.observe(el);
+        });
+
+        document.querySelectorAll('.news-card').forEach((el, index) => {
+            el.classList.add('reveal-on-scroll');
+            el.style.transitionDelay = `${(index % 3) * 100}ms`; // Stagger
+            observer.observe(el);
+        });
+
+        // Ground cards
+        document.querySelectorAll('.ground-card').forEach((el, index) => {
+            el.classList.add('reveal-on-scroll');
+            el.style.transitionDelay = `${index * 100}ms`;
+            observer.observe(el);
+        });
+
+        // Match Center
+        const matchCenter = document.querySelector('.match-center-container');
+        if (matchCenter) {
+            matchCenter.classList.add('reveal-on-scroll');
+            observer.observe(matchCenter);
+        }
+
+        // Observe squads when they load (handled in fetchMembers)
+        // We will expose a helper to attach observer
+        window.attachScrollAnimation = (element, delay = 0) => {
+            if (!element) return;
+            element.classList.add('reveal-on-scroll');
+            if (delay) element.style.transitionDelay = `${delay}ms`;
+            observer.observe(element);
+        };
+    }
+
+    // Call init
+    setTimeout(initScrollAnimations, 100); // Small delay to ensure initial render
+
+    // ============================================
     // CLOCK
     // ============================================
 
@@ -492,6 +557,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Render all members
                         html += members.map((m, index) => {
+                            // Note: Animation attachment needs to happen AFTER insertion into DOM
+                            // We will handle this with a slight delay after innerHTML update or mutation observer
+                            // For now, let's just render the string and assume we'll select them later?
+                            // Actually, better to add the class immediately in the string, but observer needs DOM element.
+                            // Strategy: The container updates via innerHTML. After that, we select children.
                             return renderPlayerCard(m);
                         }).join('');
 
@@ -500,6 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
 
+                        // Schedule animation attachment after current stack to ensure DOM is updated logic happens in fetchMembers
                         return html;
                     };
 
@@ -567,6 +638,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     squadGrid.innerHTML = html;
+
+                    // Attach animations to the newly created cards
+                    document.querySelectorAll('.squad-card, .staff-card, .player-card-minimal').forEach((el, index) => {
+                        if (window.attachScrollAnimation) {
+                            window.attachScrollAnimation(el, (index % 4) * 100);
+                        }
+                    });
                 }
             }
 
@@ -1269,17 +1347,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </article>
             `}).join('');
 
-            if (newsItems.length > newsLimit) {
-                html += `
-                    <div style="grid-column: 1/-1; text-align: center; margin-top: 1rem; width: 100%;">
-                        <button onclick="toggleNews(${newsItems.length})" id="btn-news" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.5rem 1.5rem; border-radius: 20px;">
-                            View All News <i class="fas fa-chevron-down" style="margin-left: 5px;"></i>
-                        </button>
-                    </div>
-                 `;
-            }
-
             newsGrid.innerHTML = html;
+
+            // Attach animations
+            document.querySelectorAll('.news-card').forEach((el, index) => {
+                if (window.attachScrollAnimation) {
+                    window.attachScrollAnimation(el, (index % 3) * 100);
+                }
+            });
         }
     }
 
