@@ -732,7 +732,7 @@ app.get('/api/ground', async (req, res) => {
 app.post('/api/members', async (req, res) => {
     try {
         const {
-            name, memberType, positions, jerseyNo, age, address, height,
+            name, memberType, positions, jerseyNo, age, dob, address, height,
             preferredFoot, imageUrl, status, notes
         } = req.body;
 
@@ -761,6 +761,7 @@ app.post('/api/members', async (req, res) => {
             positions: positions,
             jerseyNo: jerseyNo || '',
             age: age || '',
+            dob: dob || '',
             address: address || '',
             height: height || '',
             preferredFoot: preferredFoot || '',
@@ -787,7 +788,7 @@ app.put('/api/members/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const {
-            name, memberType, positions, jerseyNo, age, address, height,
+            name, memberType, positions, jerseyNo, age, dob, address, height,
             preferredFoot, imageUrl, status, notes
         } = req.body;
 
@@ -846,6 +847,7 @@ app.put('/api/members/:id', async (req, res) => {
             positions: positions ? positions : members[memberIndex].positions,
             jerseyNo: jerseyNo !== undefined ? jerseyNo : members[memberIndex].jerseyNo,
             age: age !== undefined ? age : members[memberIndex].age,
+            dob: dob !== undefined ? dob : members[memberIndex].dob,
             address: address !== undefined ? address : members[memberIndex].address,
             height: height !== undefined ? height : members[memberIndex].height,
             preferredFoot: preferredFoot !== undefined ? preferredFoot : members[memberIndex].preferredFoot,

@@ -117,6 +117,39 @@ function formatDate(dateString) {
 }
 
 /**
+ * Calculate age from DOB
+ */
+function calculateAge(dob) {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+}
+
+/**
+ * Update age display in admin form
+ */
+function updateAgeDisplay() {
+    const dobInput = document.getElementById('m-dob');
+    const ageDisplay = document.getElementById('age-display');
+    const ageInput = document.getElementById('m-age');
+
+    if (dobInput && dobInput.value) {
+        const age = calculateAge(dobInput.value);
+        if (ageDisplay) ageDisplay.textContent = `${age} yrs`;
+        if (ageInput) ageInput.value = age;
+    } else {
+        if (ageDisplay) ageDisplay.textContent = '';
+        if (ageInput) ageInput.value = '';
+    }
+}
+
+/**
  * Upload image file
  */
 async function uploadImage(file, type = 'player') {
@@ -739,7 +772,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             document.getElementById('m-jersey').value = m.jerseyNo || '';
-            document.getElementById('m-age').value = m.age || '';
+            document.getElementById('m-dob').value = m.dob || ''; // Populate DOB
+            // If DOB exists, calculate age, otherwise use static age
+            const currentAge = m.dob ? calculateAge(m.dob) : (m.age || '');
+            document.getElementById('m-age').value = currentAge;
+            document.getElementById('age-display').textContent = currentAge ? `${currentAge} yrs` : ''; // Update display logic
+
             document.getElementById('m-address').value = m.address || '';
             document.getElementById('m-height').value = m.height || '';
             document.getElementById('m-foot').value = m.preferredFoot || '';
@@ -854,35 +892,41 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <h1 class="player-name">${player.name}</h1>
                                 <div class="position-tag">${positionDisplay}</div>
                                 ${player.status && player.status !== 'Active' ? `<span class="status-indicator ${player.status.toLowerCase()}">${player.status}</span>` : ''}
+                                ${player.dob ? `<div style="margin-top: 0.5rem; color: var(--neutral-400); font-size: 0.9rem;"><i class="fas fa-birthday-cake" style="margin-right: 0.4rem;"></i> Born: ${new Date(player.dob).getFullYear()}</div>` : ''}
                             </div>
                         </div>
 
-                        <!-- Stats Section (Icon Only) -->
-                        ${!isStaff ? `
-                            <div class="stats-section">
-                                <div class="stats-grid-compact">
-                                    <div class="stat-compact" title="Age">
-                                        <i class="fas fa-birthday-cake stat-icon-only"></i>
-                                        <span class="stat-value">${player.age || '-'}</span>
-                                    </div>
-                                    <div class="stat-div"></div>
-                                    <div class="stat-compact" title="Height">
-                                        <i class="fas fa-ruler-vertical stat-icon-only"></i>
-                                        <span class="stat-value">${player.height ? convertCmToFeetInches(player.height) : '-'}</span>
-                                    </div>
-                                    <div class="stat-div"></div>
-                                    <div class="stat-compact" title="Preferred Foot">
-                                        <i class="fas fa-shoe-prints stat-icon-only"></i>
-                                        <span class="stat-value">
-                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'right' ? 'R' : ''}
-                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'left' ? 'L' : ''}
-                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'both' ? 'Both' : ''}
-                                            ${!player.preferredFoot ? '-' : ''}
-                                        </span>
+                        <!-- Stats Section (Age available for all, others for players only) -->
+                        <div class="stats-section">
+                            <div class="stats-grid-compact">
+                                <div class="stat-compact" title="Age">
+                                    <i class="fas fa-birthday-cake stat-icon-only"></i>
+                                    <div style="display:flex; flex-direction:column; line-height:1;">
+                                        <span class="stat-value">${player.dob ? calculateAge(player.dob) : (player.age || '-')}</span>
+                                        <span style="font-size:0.75rem; opacity:0.8; font-weight:normal;">Years</span>
                                     </div>
                                 </div>
+                                ${!isStaff ? `
+                                <div class="stat-div"></div>
+                                <div class="stat-compact" title="Height">
+                                    <i class="fas fa-ruler-vertical stat-icon-only"></i>
+                                    <span class="stat-value">${player.height ? convertCmToFeetInches(player.height) : '-'}</span>
+                                </div>
+                                <div class="stat-div"></div>
+                                <div class="stat-compact" title="Preferred Foot">
+                                    <i class="fas fa-shoe-prints stat-icon-only"></i>
+                                    <span class="stat-value">
+                                        ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'right' ? 'R' : ''}
+                                        ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'left' ? 'L' : ''}
+                                        ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'both' ? 'Both' : ''}
+                                        ${!player.preferredFoot ? '-' : ''}
+                                    </span>
+                                </div>
+                                ` : ''}
                             </div>
-                        ` : ''}
+                        </div>
+                        
+                        ${!isStaff ? '' : '' /* Cleaned up original block */}
 
                         <!-- Info Section -->
                         <div class="info-section">
@@ -964,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span>${positionDisplay || 'Player'}</span>
             </div>
                             <div class="overlay-stats">
-                                ${m.age ? `<div class="overlay-stat"><i class="fas fa-birthday-cake"></i><span>${m.age}y</span></div>` : ''}
+                                ${m.dob || m.age ? `<div class="overlay-stat"><i class="fas fa-birthday-cake"></i><span>${m.dob ? calculateAge(m.dob) : m.age}y</span></div>` : ''}
                                 ${heightDisplay ? `<div class="overlay-stat"><i class="fas fa-ruler-vertical"></i><span>${heightDisplay}</span></div>` : ''}
                                 ${m.preferredFoot ? `<div class="overlay-stat"><i class="fas fa-shoe-prints"></i><span>${m.preferredFoot.charAt(0).toUpperCase()}</span></div>` : ''}
                             </div>
@@ -1372,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isStaff = memberType === 'Staff';
 
             // Hide/show player fields
-            const fieldsToToggle = ['m-jersey', 'm-age', 'm-height', 'm-foot', 'm-address'].map(id => document.getElementById(id)?.closest('.form-group'));
+            const fieldsToToggle = ['m-jersey', 'm-height', 'm-foot', 'm-address'].map(id => document.getElementById(id)?.closest('.form-group'));
             fieldsToToggle.forEach(fg => {
                 if (fg) fg.style.display = isStaff ? 'none' : 'block';
             });
@@ -1420,6 +1464,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateHeightDisplay();
         }
 
+        // Add real-time age calculation
+        const dobInput = document.getElementById('m-dob');
+        if (dobInput) {
+            dobInput.addEventListener('change', updateAgeDisplay);
+        }
+
         addMemberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1441,7 +1491,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const jerseyNo = document.getElementById('m-jersey').value;
-            const age = document.getElementById('m-age').value;
+            const dob = document.getElementById('m-dob').value;
+            const age = document.getElementById('m-age').value; // Hidden input updated by JS
             const height = document.getElementById('m-height').value;
             const preferredFoot = document.getElementById('m-foot').value;
             const address = document.getElementById('m-address').value.trim();
@@ -1468,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name, memberType, positions, jerseyNo, age, address, height, preferredFoot, imageUrl, status, notes
+                        name, memberType, positions, jerseyNo, age, dob, address, height, preferredFoot, imageUrl, status, notes
                     })
                 });
 
@@ -3487,5 +3538,61 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAllMatches();
         }
     }, 60000); // 60 seconds
+
+    // ============================================
+    // TYPEWRITER EFFECT
+    // ============================================
+    function initTypewriter() {
+        const element = document.getElementById('hero-typewriter');
+        if (!element) return;
+
+        // Store original text
+        const originalText = element.textContent.trim().replace(/\s+/g, ' ');
+
+        // Set initial state: all invisible
+        element.innerHTML = `<span style="border-right: 3px solid #fb8500; padding-right: 4px;"></span><span style="opacity: 0;">${originalText}</span>`;
+        element.style.opacity = '1';
+
+        let i = 0;
+        let isDeleting = false;
+        const typeSpeed = 50;
+        const deleteSpeed = 30;
+        const pauseEnd = 3000;
+        const pauseStart = 1000;
+
+        function type() {
+            const visible = originalText.substring(0, i);
+            const invisible = originalText.substring(i);
+
+            // Layout stability: Invisible text ghosting
+            element.innerHTML = `<span style="border-right: 3px solid #fb8500; padding-right: 4px;">${visible}</span><span style="opacity: 0;">${invisible}</span>`;
+
+            let nextSpeed = isDeleting ? deleteSpeed : typeSpeed;
+
+            if (!isDeleting && i < originalText.length) {
+                // Typing
+                i++;
+            } else if (isDeleting && i > 0) {
+                // Deleting
+                i--;
+            } else if (!isDeleting && i === originalText.length) {
+                // Finished typing, wait before deleting
+                isDeleting = true;
+                nextSpeed = pauseEnd;
+            } else if (isDeleting && i === 0) {
+                // Finished deleting, wait before typing
+                isDeleting = false;
+                nextSpeed = pauseStart;
+            }
+
+            setTimeout(type, nextSpeed);
+        }
+
+        // Start typing after a delay
+        setTimeout(type, 800);
+    }
+
+    // Call init
+    initTypewriter();
 
 });
