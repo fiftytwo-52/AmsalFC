@@ -474,9 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const categorized = categorizePlayersByPosition(members);
                     // Helper function to render categories with limit
                     const renderCategory = (title, icon, members, categoryId) => {
-                        // Responsive Limit: 4 for desktop (1 row of 4), 1 for mobile (1 row of 1)
-                        // User requested "one row of cards... just one line"
-                        const limit = window.innerWidth < 768 ? 1 : 4;
+                        // Responsive Limit: 
+                        // On Desktop (>=1024px): Limit to 4 (1 row of 4) and use "View All" button.
+                        // On Mobile/Tablet (<1024px): Show ALL items (limit = members.length) and use horizontal scrolling.
+                        const isDesktop = window.innerWidth >= 1024;
+                        const limit = isDesktop ? 4 : members.length;
 
                         if (members.length === 0) return '';
 
@@ -484,13 +486,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const imgError = "this.onerror=null; this.parentNode.innerHTML='<span class=\"default-avatar\"><i class=\"fas fa-user-circle\"></i></span>'";
 
                         let html = `
-                            <div class="position-category">
+                            <div class="category-wrapper">
+                                <button class="scroll-btn prev" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: -300, behavior: 'smooth'})"><i class="fas fa-chevron-left"></i></button>
                                 <div class="category-header">
                                     <span class="category-icon">${icon}</span>
                                     <h3 class="category-title">${title}</h3>
                                     <span class="category-count">${members.length}</span>
                                 </div>
-                            </div>
+                                <div class="category-cards-container">
                         `;
 
                         // Render all members, but hide the ones exceeding the limit
@@ -505,6 +508,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             return cardHtml;
                         }).join('');
+
+                        html += `
+                                </div>
+                                <button class="scroll-btn next" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: 300, behavior: 'smooth'})"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                        `;
 
                         // Add Button if needed
                         if (members.length > limit) {
@@ -547,11 +556,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Staff Section
                     if (staffGrid) {
-                        const staffLimit = window.innerWidth < 768 ? 2 : 8;
+                        const isDesktop = window.innerWidth >= 1024;
+                        const staffLimit = isDesktop ? 8 : categorized.staff.length; // Show all on mobile for scroll
                         if (categorized.staff.length > 0) {
                             const imgError = "this.onerror=null; this.parentNode.innerHTML='<span class=\"default-avatar\"><i class=\"fas fa-user-circle\"></i></span>'";
 
-                            let staffHtml = categorized.staff.map((m, index) => {
+                            // Staff Wrapper
+                            let staffHtml = `
+                                <div class="category-wrapper" style="width: 100%; grid-column: 1 / -1;">
+                                    <button class="scroll-btn prev" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: -300, behavior: 'smooth'})"><i class="fas fa-chevron-left"></i></button>
+                                    <div class="category-cards-container" id="staff-cards-container">
+                            `;
+
+                            staffHtml += categorized.staff.map((m, index) => {
                                 const positions = Array.isArray(m.positions) ? m.positions : (m.position ? [m.position] : []);
                                 const positionDisplay = positions.length > 0 ? positions.join(' / ') : '';
                                 const isHidden = index >= staffLimit;
@@ -583,6 +600,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                      </div>
                                  `;
                             }).join('');
+
+                            staffHtml += `
+                                    </div>
+                                    <button class="scroll-btn next" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: 300, behavior: 'smooth'})"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            `;
 
                             if (categorized.staff.length > staffLimit) {
                                 // Button for staff
@@ -798,55 +821,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if (playerModalBody) {
                 playerModalBody.innerHTML = `
                     <div class="player-profile-card">
-                        <!-- Profile Header -->
-                        <div class="profile-header">
-                            <div class="profile-avatar">
-                                ${player.imageUrl ? `<img src="${player.imageUrl}" alt="${player.name}">` : `<span class='default-avatar'><i class='fas fa-user-circle'></i></span>`}
-                                ${!isStaff && player.jerseyNo ? `<div class="jersey-badge">#${player.jerseyNo}</div>` : ''}
+                        <!-- Profile Header Split Layout -->
+                        <div class="profile-header-split">
+                            <div class="profile-image-container">
+                                <div class="profile-avatar">
+                                    ${player.imageUrl ? `<img src="${player.imageUrl}" alt="${player.name}">` : `<span class='default-avatar'><i class='fas fa-user-circle'></i></span>`}
+                                    ${!isStaff && player.jerseyNo ? `<div class="jersey-badge">#${player.jerseyNo}</div>` : ''}
+                                </div>
                             </div>
-                            <div class="profile-info">
+                            <div class="profile-info-container">
                                 <h1 class="player-name">${player.name}</h1>
                                 <div class="position-tag">${positionDisplay}</div>
                                 ${player.status && player.status !== 'Active' ? `<span class="status-indicator ${player.status.toLowerCase()}">${player.status}</span>` : ''}
                             </div>
                         </div>
 
-                        <!-- Stats Section -->
+                        <!-- Stats Section (Icon Only) -->
                         ${!isStaff ? `
                             <div class="stats-section">
-                                <h3>Player Stats</h3>
-                                <div class="stats-grid">
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-birthday-cake"></i>
-                                        </div>
-                                        <div class="stat-content">
-                                            <span class="stat-value">${player.age || '-'}</span>
-                                            <span class="stat-label">Age</span>
-                                        </div>
+                                <div class="stats-grid-compact">
+                                    <div class="stat-compact" title="Age">
+                                        <i class="fas fa-birthday-cake stat-icon-only"></i>
+                                        <span class="stat-value">${player.age || '-'}</span>
                                     </div>
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-ruler-vertical"></i>
-                                        </div>
-                                        <div class="stat-content">
-                                            <span class="stat-value">${player.height ? convertCmToFeetInches(player.height) : '-'}</span>
-                                            <span class="stat-label">Height</span>
-                                        </div>
+                                    <div class="stat-div"></div>
+                                    <div class="stat-compact" title="Height">
+                                        <i class="fas fa-ruler-vertical stat-icon-only"></i>
+                                        <span class="stat-value">${player.height ? convertCmToFeetInches(player.height) : '-'}</span>
                                     </div>
-                                    <div class="stat-item">
-                                        <div class="stat-icon">
-                                            <i class="fas fa-shoe-prints"></i>
-                                        </div>
-                                        <div class="stat-content">
-                                            <span class="stat-value">
-                                                ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'right' ? 'Right' : ''}
-                                                ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'left' ? 'Left' : ''}
-                                                ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'both' ? 'Both' : ''}
-                                                ${!player.preferredFoot ? '-' : ''}
-                                            </span>
-                                            <span class="stat-label">Foot</span>
-                                        </div>
+                                    <div class="stat-div"></div>
+                                    <div class="stat-compact" title="Preferred Foot">
+                                        <i class="fas fa-shoe-prints stat-icon-only"></i>
+                                        <span class="stat-value">
+                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'right' ? 'R' : ''}
+                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'left' ? 'L' : ''}
+                                            ${player.preferredFoot && player.preferredFoot.toLowerCase() === 'both' ? 'Both' : ''}
+                                            ${!player.preferredFoot ? '-' : ''}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -3236,10 +3247,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // QR Code Modal for Donate Button
     const donateBtn = document.getElementById('donate-btn');
     const qrModal = document.getElementById('qr-modal');
+    const qrModalBody = document.getElementById('qr-modal-body');
     const qrModalClose = document.getElementById('qr-modal-close');
 
     if (donateBtn && qrModal) {
         donateBtn.addEventListener('click', () => {
+            if (qrModalBody) {
+                qrModalBody.innerHTML = `
+                    <div class="qr-code-container">
+                        <div class="donate-icon" style="width: 60px; height: 60px; font-size: 1.5rem; margin-bottom: 1rem;">
+                            <i class="fas fa-hand-holding-heart"></i>
+                        </div>
+                        <h3>Support the Club</h3>
+                        <p>Scan the QR code to donate.</p>
+                        <div class="qr-code-sample" style="background: white; padding: 10px; display: inline-block; border-radius: 10px; margin: 10px 0;">
+                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Donation" alt="Donation QR Code" style="width: 150px; height: 150px;">
+                        </div>
+                        <div class="bank-details" style="margin-top: 1rem; font-size: 0.9rem; color: var(--neutral-600); background: var(--neutral-100); padding: 1rem; border-radius: 10px;">
+                            <strong>Bank Transfer</strong><br>
+                            Bank: Amsal National Bank<br>
+                            Account: 1234-5678-9012<br>
+                            Name: Amsal FC
+                        </div>
+                    </div>
+                `;
+            }
             qrModal.classList.add('active');
         });
     }
