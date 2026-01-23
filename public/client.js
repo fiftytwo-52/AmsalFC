@@ -474,12 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const categorized = categorizePlayersByPosition(members);
                     // Helper function to render categories with limit
                     const renderCategory = (title, icon, members, categoryId) => {
-                        // Responsive Limit: 
-                        // On Desktop (>=1024px): Limit to 4 (1 row of 4) and use "View All" button.
-                        // On Mobile/Tablet (<1024px): Show ALL items (limit = members.length) and use horizontal scrolling.
-                        const isDesktop = window.innerWidth >= 1024;
-                        const limit = isDesktop ? 4 : members.length;
-
+                        // All screens: Show ALL items and use horizontal scrolling.
                         if (members.length === 0) return '';
 
                         // Error handler for images to force default avatar on failure
@@ -487,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         let html = `
                             <div class="category-wrapper">
-                                <button class="scroll-btn prev" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: -300, behavior: 'smooth'})"><i class="fas fa-chevron-left"></i></button>
                                 <div class="category-header">
                                     <span class="category-icon">${icon}</span>
                                     <h3 class="category-title">${title}</h3>
@@ -496,56 +490,22 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="category-cards-container">
                         `;
 
-                        // Render all members, but hide the ones exceeding the limit
+                        // Render all members
                         html += members.map((m, index) => {
-                            const isHidden = index >= limit;
-                            const hiddenClass = isHidden ? `hidden-card-${categoryId}` : '';
-                            const style = isHidden ? 'display: none;' : '';
-
-                            let cardHtml = renderPlayerCard(m);
-                            if (isHidden) {
-                                cardHtml = cardHtml.replace('class="squad-card', `style="display: none;" class="squad-card hidden-card-${categoryId}`);
-                            }
-                            return cardHtml;
+                            return renderPlayerCard(m);
                         }).join('');
 
                         html += `
                                 </div>
-                                <button class="scroll-btn next" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: 300, behavior: 'smooth'})"><i class="fas fa-chevron-right"></i></button>
                             </div>
                         `;
-
-                        // Add Button if needed
-                        if (members.length > limit) {
-                            html += `
-                                <div style="grid-column: 1/-1; text-align: center; margin-top: 1rem; margin-bottom: 2rem; width: 100%;">
-                                    <button onclick="toggleCategory('${categoryId}', ${members.length})" id="btn-${categoryId}" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.5rem 1.5rem; border-radius: 20px;">
-                                        View All ${title} <i class="fas fa-chevron-down" style="margin-left: 5px;"></i>
-                                    </button>
-                                </div>
-                            `;
-                        }
 
                         return html;
                     };
 
-                    // Global toggle function
+                    // Global toggle function (kept if needed elsewhere, but effectively unused for this section now)
                     window.toggleCategory = (id, total) => {
-                        const hiddenCards = document.querySelectorAll(`.hidden-card-${id}`);
-                        const btn = document.getElementById(`btn-${id}`);
-
-                        if (hiddenCards.length === 0) return;
-                        const isHidden = hiddenCards[0].style.display === 'none';
-
-                        hiddenCards.forEach(card => {
-                            card.style.display = isHidden ? '' : 'none'; // Empty string reverts to default CSS (block/flex)
-                        });
-
-                        if (isHidden) {
-                            btn.innerHTML = `Show Less <i class="fas fa-chevron-up" style="margin-left: 5px;"></i>`;
-                        } else {
-                            btn.innerHTML = `View All <i class="fas fa-chevron-down" style="margin-left: 5px;"></i>`;
-                        }
+                        // Functionality no longer needed for category expansion as all items are shown
                     };
 
                     let html = '';
@@ -556,24 +516,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Staff Section
                     if (staffGrid) {
-                        const isDesktop = window.innerWidth >= 1024;
-                        const staffLimit = isDesktop ? 8 : categorized.staff.length; // Show all on mobile for scroll
                         if (categorized.staff.length > 0) {
                             const imgError = "this.onerror=null; this.parentNode.innerHTML='<span class=\"default-avatar\"><i class=\"fas fa-user-circle\"></i></span>'";
 
                             // Staff Wrapper
                             let staffHtml = `
                                 <div class="category-wrapper" style="width: 100%; grid-column: 1 / -1;">
-                                    <button class="scroll-btn prev" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: -300, behavior: 'smooth'})"><i class="fas fa-chevron-left"></i></button>
                                     <div class="category-cards-container" id="staff-cards-container">
                             `;
 
                             staffHtml += categorized.staff.map((m, index) => {
                                 const positions = Array.isArray(m.positions) ? m.positions : (m.position ? [m.position] : []);
                                 const positionDisplay = positions.length > 0 ? positions.join(' / ') : '';
-                                const isHidden = index >= staffLimit;
-                                const style = isHidden ? 'display: none;' : '';
-                                const hiddenClass = isHidden ? 'hidden-card-staff' : '';
 
                                 // Use default profile image for placeholder if no image
                                 const defaultProfileImage = '/defaultprofile.png';
@@ -581,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const imgError = `this.onerror=null; this.src='${defaultProfileImage}'`;
 
                                 return `
-                                    <div class="player-card-minimal staff-card ${hiddenClass}" style="${style}" onclick="window.openPlayerModal('${m.id}')">
+                                    <div class="player-card-minimal staff-card" onclick="window.openPlayerModal('${m.id}')">
                                         <div class="minimal-card">
                                             <div class="minimal-image">
                                                 <img src="${staffImage}" alt="${m.name}" onerror="${imgError}" />
@@ -603,20 +557,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             staffHtml += `
                                     </div>
-                                    <button class="scroll-btn next" onclick="this.parentNode.querySelector('.category-cards-container').scrollBy({left: 300, behavior: 'smooth'})"><i class="fas fa-chevron-right"></i></button>
                                 </div>
                             `;
 
-                            if (categorized.staff.length > staffLimit) {
-                                // Button for staff
-                                staffHtml += `
-                                    <div style="grid-column: 1/-1; text-align: center; margin-top: 1rem; width: 100%;">
-                                        <button onclick="toggleCategory('staff')" id="btn-staff" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.5rem 1.5rem; border-radius: 20px;">
-                                            View All Staff <i class="fas fa-chevron-down" style="margin-left: 5px;"></i>
-                                        </button>
-                                    </div>
-                                  `;
-                            }
                             staffGrid.innerHTML = staffHtml;
                         } else {
                             staffGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No staff members listed.</p>';
