@@ -88,12 +88,16 @@
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-left">
-                <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed" id="secret-logo"
-                    onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+                <a href="index.html" class="brand-logo-link" aria-label="Go to AMSAL FC homepage">
+                    <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed" id="secret-logo"
+                        onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+                </a>
             </div>
 
             <div class="nav-center">
-                <h1 class="club-title-white">AMSAL FC</h1>
+                <a href="index.html" class="brand-title-link" aria-label="Go to AMSAL FC homepage">
+                    <h1 class="club-title-white">AMSAL FC</h1>
+                </a>
             </div>
 
             <div class="nav-right">
@@ -347,17 +351,19 @@
 
     <!-- Login Modal -->
     <div id="login-modal" class="modal">
-        <div class="modal-content modal-login">
-            <button class="modal-close" id="modal-close" aria-label="Close">
+        <div class="modal-content modal-login login-modal-card">
+            <button class="modal-close" id="modal-close" aria-label="Close admin access dialog">
                 <i class="fas fa-times"></i>
             </button>
-            <div class="modal-header">
-                <i class="fas fa-user-shield modal-header-icon"></i>
-                <h2>Admin Access</h2>
-                <p>Enter your credentials to continue</p>
+            <div class="modal-header login-modal-header">
+                <span class="login-modal-icon"><i class="fas fa-user-shield"></i></span>
+                <div>
+                    <h2>Admin Access</h2>
+                    <p>Sign in to manage AMSAL FC</p>
+                </div>
             </div>
 
-            <form id="login-form">
+            <form id="login-form" class="login-modal-form">
                 <div class="form-group">
                     <label class="form-label" for="admin-user">
                         <i class="fas fa-user"></i> Username

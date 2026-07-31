@@ -435,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navLinks.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.classList.remove('active');
+                mobileMenuBtn.classList.remove('active');
             });
         });
     }
@@ -512,24 +513,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groundCapacity) groundCapacity.textContent = club.stadiumCapacity ? `${club.stadiumCapacity} PAX` : 'Not set';
             if (groundLight) groundLight.textContent = club.nightlight || 'No';
 
-            // Add ground image if available
+            // Apply a photo only after it loads; CSS remains as the resilient stadium fallback.
             const groundSection = document.getElementById('ground');
-            if (groundSection && club.groundImageUrl) {
-                groundSection.style.backgroundImage = `linear-gradient(rgba(10, 25, 41, 0.8), rgba(10, 25, 41, 0.8)), url(${club.groundImageUrl})`;
-                groundSection.style.backgroundSize = 'cover';
-                groundSection.style.backgroundPosition = 'center';
-                groundSection.style.backgroundAttachment = 'fixed';
-            }
-
-            // Update specific ground display image
             const groundDisplayImage = document.getElementById('ground-display-image');
-            if (groundDisplayImage) {
-                if (club.groundImageUrl) {
-                    groundDisplayImage.src = club.groundImageUrl;
-                    groundDisplayImage.style.display = 'block';
-                } else {
-                    groundDisplayImage.style.display = 'none';
-                }
+            if (groundSection && club.groundImageUrl) {
+                const groundImage = new Image();
+                groundImage.onload = () => {
+                    groundSection.style.backgroundImage = `linear-gradient(rgba(3, 35, 56, 0.84), rgba(3, 35, 56, 0.9)), url("${club.groundImageUrl}")`;
+                    groundSection.style.backgroundSize = 'cover';
+                    groundSection.style.backgroundPosition = 'center';
+
+                    if (groundDisplayImage) {
+                        groundDisplayImage.src = club.groundImageUrl;
+                        groundDisplayImage.style.display = 'block';
+                    }
+                };
+                groundImage.onerror = () => {
+                    groundSection.style.removeProperty('background-image');
+                    if (groundDisplayImage) groundDisplayImage.style.display = 'none';
+                };
+                groundImage.src = club.groundImageUrl;
+            } else if (groundDisplayImage) {
+                groundDisplayImage.style.display = 'none';
             }
         } catch (error) {
             console.error('Error loading ground info:', error);
@@ -1855,12 +1860,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Keep the refresh callback available to the shared profile editor on every admin page.
+    let fetchAdmins = async () => { };
+
     // Show admin management for super admins (works on both admin.html and super-admin.html)
     const isSuperAdmin = sessionStorage.getItem('amsal_admin_role') === 'super';
     if ((adminManagement || adminList) && isSuperAdmin) {
         if (adminManagement) adminManagement.classList.remove('hidden');
 
-        async function fetchAdmins() {
+        fetchAdmins = async function () {
             if (!adminList) return;
             try {
                 const res = await fetch('/api/admins');
@@ -1909,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching admins:', error);
                 showToast('Error', 'Failed to load admin list', 'error');
             }
-        }
+        };
 
         fetchAdmins();
 
@@ -2285,7 +2293,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            document.getElementById('edit-modal-title').textContent = 'Edit Member';
+            document.getElementById('edit-modal-title').textContent = 'Edit Member Profile';
+            const editSubtitle = document.getElementById('edit-modal-subtitle');
+            if (editSubtitle) editSubtitle.textContent = 'Update team member details and profile photo.';
             document.getElementById('edit-id').value = m.id;
             document.getElementById('edit-type').value = 'member';
 
@@ -2383,7 +2393,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!a) return;
 
-            document.getElementById('edit-modal-title').textContent = 'Edit Admin';
+            document.getElementById('edit-modal-title').textContent = 'Edit Admin Profile';
+            const editSubtitle = document.getElementById('edit-modal-subtitle');
+            if (editSubtitle) editSubtitle.textContent = 'Update the username, password, or profile photo.';
             document.getElementById('edit-id').value = a.id;
             document.getElementById('edit-type').value = 'admin';
 

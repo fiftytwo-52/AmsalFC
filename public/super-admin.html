@@ -29,20 +29,27 @@
     <nav class="navbar" id="navbar">
         <div class="nav-container">
             <div class="nav-left">
-                <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed"
-                    onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+                <a href="index.html" class="brand-logo-link" aria-label="Go to AMSAL FC homepage">
+                    <img src="logo.png" alt="AMSAL FC Logo" class="logo-fixed"
+                        onerror="this.src='https://via.placeholder.com/60?text=AFC'">
+                </a>
             </div>
 
             <div class="nav-center">
-                <h1 class="club-title-white">AMSAL FC</h1>
+                <a href="index.html" class="brand-title-link" aria-label="Go to AMSAL FC homepage">
+                    <h1 class="club-title-white">AMSAL FC</h1>
+                </a>
             </div>
 
             <div class="nav-right">
                 <ul class="nav-links" id="nav-links">
                     <li><a href="index.html" title="Home"><i class="fas fa-home"></i><span> Home</span></a></li>
-                    <li><a href="admin.html" title="Admin Dashboard"><i class="fas fa-tachometer-alt"></i><span> Admin</span></a></li>
-                    <li><a href="super-admin.html" class="active" title="Super Admin"><i class="fas fa-user-shield"></i><span> Super Admin</span></a></li>
-                    <li><a href="#" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i><span> Logout</span></a></li>
+                    <li><a href="admin.html" title="Admin Dashboard"><i class="fas fa-tachometer-alt"></i><span>
+                                Admin</span></a></li>
+                    <li><a href="super-admin.html" class="active" title="Super Admin"><i
+                                class="fas fa-user-shield"></i><span> Super Admin</span></a></li>
+                    <li><a href="#" id="logout-btn" title="Logout"><i class="fas fa-sign-out-alt"></i><span>
+                                Logout</span></a></li>
                 </ul>
                 <button class="menu-toggle" id="mobile-menu" aria-label="Toggle Menu">
                     <i class="fas fa-bars"></i>
@@ -85,14 +92,16 @@
                                 <label class="form-label" for="a-username">
                                     <i class="fas fa-user"></i> Username *
                                 </label>
-                                <input type="text" id="a-username" class="form-input" placeholder="Enter username" required>
+                                <input type="text" id="a-username" class="form-input" placeholder="Enter username"
+                                    required>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label" for="a-password">
                                     <i class="fas fa-lock"></i> Password *
                                 </label>
-                                <input type="password" id="a-password" class="form-input" placeholder="Enter password" required>
+                                <input type="password" id="a-password" class="form-input" placeholder="Enter password"
+                                    required>
                             </div>
 
                             <div class="form-group">
@@ -100,7 +109,8 @@
                                     <i class="fas fa-image"></i> Profile Image (Optional)
                                 </label>
                                 <input type="file" id="a-image" class="form-input" accept="image/*">
-                                <button type="button" id="upload-admin-image-btn" class="form-submit accent" style="margin-top: 0.5rem;">
+                                <button type="button" id="upload-admin-image-btn" class="form-submit accent"
+                                    style="margin-top: 0.5rem;">
                                     <i class="fas fa-upload"></i> Upload Image
                                 </button>
                                 <input type="hidden" id="a-image-url">
@@ -127,18 +137,22 @@
                     <div class="system-management-content">
                         <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
                             <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-                            <strong>Danger Zone:</strong> These actions are irreversible and will permanently delete data.
+                            <strong>Danger Zone:</strong> These actions are irreversible and will permanently delete
+                            data.
                         </p>
 
-                        <button type="button" id="bomb-database-btn" class="form-submit danger" style="background-color: #dc2626; border-color: #dc2626;">
+                        <button type="button" id="bomb-database-btn" class="form-submit danger"
+                            style="background-color: #dc2626; border-color: #dc2626;">
                             <i class="fas fa-bomb"></i> Bomb Database
                         </button>
 
-                        <div class="bomb-database-info" style="margin-top: 1rem; padding: 1rem; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem;">
+                        <div class="bomb-database-info"
+                            style="margin-top: 1rem; padding: 1rem; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem;">
                             <h4 style="color: #dc2626; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
                                 <i class="fas fa-info-circle"></i> What happens when you bomb the database?
                             </h4>
-                            <ul style="color: #7f1d1d; margin: 0; padding-left: 1.2rem; font-size: 0.8rem; line-height: 1.4;">
+                            <ul
+                                style="color: #7f1d1d; margin: 0; padding-left: 1.2rem; font-size: 0.8rem; line-height: 1.4;">
                                 <li>All members will be deleted</li>
                                 <li>All news articles will be deleted</li>
                                 <li>All regular admin accounts will be deleted</li>
@@ -194,11 +208,6 @@
             e.preventDefault();
             sessionStorage.clear();
             window.location.href = 'login.html';
-        });
-
-        // Mobile menu toggle
-        document.getElementById('mobile-menu')?.addEventListener('click', () => {
-            document.getElementById('nav-links').classList.toggle('active');
         });
 
         // Bomb Database functionality
